@@ -10,6 +10,7 @@ build/
 !.idea/.gitignore
 !.idea/modules
 !.idea/scopes
+!.idea/copyright
 
 *.iws
 *.iml
