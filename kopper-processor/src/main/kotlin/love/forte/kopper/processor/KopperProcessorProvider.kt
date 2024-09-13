@@ -14,26 +14,18 @@
  * limitations under the License.
  */
 
-package love.forte.kopper.annotation
+package love.forte.kopper.processor
 
-/**
- * Enum representing different types of properties
- */
-public enum class PropertyType {
-    /**
-     * Attempt some degree of automatic judgment depending on the situation.
-     * If it cannot be judged and cannot be found, an exception is thrown.
-     */
-    AUTO,
+import com.google.devtools.ksp.processing.SymbolProcessor
+import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
+import com.google.devtools.ksp.processing.SymbolProcessorProvider
 
-    /**
-     * A property implemented as ... em, a property.
-     */
-    PROPERTY,
 
-    /**
-     * A property implemented as a function.
-     * This function must be parameterless.
-     */
-    FUNCTION,
+
+
+public class KopperProcessorProvider : SymbolProcessorProvider {
+    override fun create(environment: SymbolProcessorEnvironment): SymbolProcessor {
+
+        return KopperProcessor(environment)
+    }
 }

@@ -27,8 +27,10 @@ package love.forte.kopper.annotation
  * }
  * ```
  *
- * @param source The source property in source model (with type [sourceType])
- * @param target The target property in target model (with type [sourceType])
+ * @param source The source property in a source model.
+ * (with type [sourceType])
+ * @param target The target property in a target model.
+ * (with type [targetType])
  *
  */
 @Repeatable
@@ -37,12 +39,19 @@ package love.forte.kopper.annotation
 public annotation class Map(
     val target: String,
     val source: String = SAME_AS_TARGET,
-    val targetType: PropertyType = PropertyType.PROPERTY,
-    val sourceType: PropertyType = PropertyType.PROPERTY,
+    val targetType: PropertyType = PropertyType.AUTO,
+    val sourceType: PropertyType = PropertyType.AUTO,
     val ignore: Boolean = false,
+) {
 
-    val eval: String = ""
-)
+    /**
+     * Mark as map target.
+     */
+    @kotlin.annotation.Target(AnnotationTarget.VALUE_PARAMETER)
+    public annotation class Target
+
+
+}
 
 /**
  * Same as [Map.target] if [Map.source]'s value is an empty string.

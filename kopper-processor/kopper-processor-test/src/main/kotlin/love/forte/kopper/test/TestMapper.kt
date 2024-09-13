@@ -14,26 +14,26 @@
  * limitations under the License.
  */
 
-package love.forte.kopper.annotation
+package love.forte.kopper.test
+
+import love.forte.kopper.annotation.Map
+import love.forte.kopper.annotation.Mapper
+
+data class SourceType1(val name: String, val age: Int)
+data class SourceType2(val size: Long)
+
+data class TargetType(val name: String, val age: Int, val size: Long)
 
 /**
- * Enum representing different types of properties
+ *
+ * @author ForteScarlet
  */
-public enum class PropertyType {
-    /**
-     * Attempt some degree of automatic judgment depending on the situation.
-     * If it cannot be judged and cannot be found, an exception is thrown.
-     */
-    AUTO,
+@Mapper
+interface TestMapper {
 
-    /**
-     * A property implemented as ... em, a property.
-     */
-    PROPERTY,
+    @Map("name", "name")
+    @Map("age", "age")
+    @Map("size", "source2")
+    fun SourceType1.mapTo1(source2: SourceType2): TargetType
 
-    /**
-     * A property implemented as a function.
-     * This function must be parameterless.
-     */
-    FUNCTION,
 }

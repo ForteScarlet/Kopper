@@ -14,26 +14,20 @@
  * limitations under the License.
  */
 
-package love.forte.kopper.annotation
+package love.forte.kopper.processor.util
+
+internal const val EVAL: String = "eval"
 
 /**
- * Enum representing different types of properties
+ * Is `eval(...)` expression.
  */
-public enum class PropertyType {
-    /**
-     * Attempt some degree of automatic judgment depending on the situation.
-     * If it cannot be judged and cannot be found, an exception is thrown.
-     */
-    AUTO,
+internal val String.isEvalExpression: Boolean
+    get() = startsWith("$EVAL(") && endsWith(")")
 
-    /**
-     * A property implemented as ... em, a property.
-     */
-    PROPERTY,
+internal fun String.evalExpressionValue(): String {
+    check(isEvalExpression) {
+        "$this is not an eval expression."
+    }
 
-    /**
-     * A property implemented as a function.
-     * This function must be parameterless.
-     */
-    FUNCTION,
+    return substring(EVAL.length + 1, length - 1)
 }

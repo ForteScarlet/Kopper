@@ -28,6 +28,7 @@ public annotation class Mapper(
     val genTargetName: String = "", // same as Mapper and plus with prefix and suffix
     val genTargetNamePrefix: String = "",
     val genTargetNameSuffix: String = "Impl",
+    val genTargetPackages: Array<String> = [],
 
     // TODO strategy
 

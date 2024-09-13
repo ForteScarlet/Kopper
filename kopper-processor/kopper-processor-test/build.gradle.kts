@@ -14,26 +14,36 @@
  * limitations under the License.
  */
 
-package love.forte.kopper.annotation
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
-/**
- * Enum representing different types of properties
- */
-public enum class PropertyType {
-    /**
-     * Attempt some degree of automatic judgment depending on the situation.
-     * If it cannot be judged and cannot be found, an exception is thrown.
-     */
-    AUTO,
 
-    /**
-     * A property implemented as ... em, a property.
-     */
-    PROPERTY,
+plugins {
+    kotlin("jvm")
+    alias(libs.plugins.dokka)
+    alias(libs.plugins.ksp)
+}
 
-    /**
-     * A property implemented as a function.
-     * This function must be parameterless.
-     */
-    FUNCTION,
+kotlin {
+    jvmToolchain(8)
+    compilerOptions {
+        javaParameters.set(true)
+        jvmTarget.set(JvmTarget.JVM_1_8)
+        freeCompilerArgs.addAll(
+            "-Xjvm-default=all",
+            "-Xjsr305=strict"
+        )
+    }
+}
+
+dependencies {
+    implementation(project(":kopper-processor"))
+    ksp(project(":kopper-annotation"))
+    testImplementation(kotlin("test"))
+}
+
+tasks.test {
+    useJUnitPlatform()
+}
+
+ksp {
 }
