@@ -6,11 +6,11 @@ build/
 
 
 ### IntelliJ IDEA ###
-.idea
-!.idea/.gitignore
-!.idea/modules
-!.idea/scopes
-!.idea/copyright
+.idea/**
+!/.idea/.gitignore
+!/.idea/modules/*
+!/.idea/scopes/*
+!/.idea/copyright/*
 
 *.iws
 *.iml
