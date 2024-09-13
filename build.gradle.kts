@@ -1,13 +1,18 @@
-// plugins {
-//     kotlin("jvm") version "2.0.10"
-// }
-//
-group = "love.forte.kopper"
-version = "1.0-SNAPSHOT"
-//
-// repositories {
-//     mavenCentral()
-// }
+
+group = P.GROUP
+version = P.VERSION
+repositories {
+    mavenCentral()
+}
+
+allprojects {
+    group = P.GROUP
+    version = P.VERSION
+    repositories {
+        mavenCentral()
+    }
+}
+
 //
 // dependencies {
 //     testImplementation(kotlin("test"))
