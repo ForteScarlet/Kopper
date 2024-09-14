@@ -3,6 +3,7 @@ kotlin = "2.0.10"
 ksp = "2.0.10-1.0.24"
 kotlinPoet = "1.18.1"
 dokka = "1.9.20"
+mockk = "1.13.12"
 
 [libraries]
 autoService = "com.google.auto.service:auto-service-annotations:1.1.1"
@@ -16,6 +17,8 @@ kotlinPoet-ksp = { module = "com.squareup:kotlinpoet-ksp", version.ref = "kotlin
 # dokka
 dokka-plugin = { group = "org.jetbrains.dokka", name = "dokka-gradle-plugin", version.ref = "dokka" }
 dokka-base = { group = "org.jetbrains.dokka", name = "dokka-base", version.ref = "dokka" }
+
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 
 [bundles]
 kotlinPoet-ksp = ["ksp", "kotlinPoet", "kotlinPoet-ksp"]

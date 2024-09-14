@@ -41,7 +41,14 @@ dependencies {
     api(project(":kopper-common:kopper-common-core"))
     api(project(":kopper-common:kopper-common-transformer"))
     api(libs.bundles.kotlinPoet.ksp)
+
+    // NOTE: It's important that you _don't_ use compileOnly here,
+    // as it will fail to resolve at compile-time otherwise
+    implementation(libs.autoService)
+    ksp(libs.autoService.ksp)
+
     testImplementation(kotlin("test"))
+    testImplementation(libs.mockk)
 }
 
 tasks.test {
