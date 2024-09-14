@@ -39,7 +39,7 @@ kotlin {
 dependencies {
     api(project(":kopper-annotation"))
     api(project(":kopper-common:kopper-common-core"))
-    api(project(":kopper-common:kopper-common-transformer"))
+    // api(project(":kopper-common:kopper-common-transformer"))
     api(libs.bundles.kotlinPoet.ksp)
 
     // NOTE: It's important that you _don't_ use compileOnly here,

@@ -27,9 +27,8 @@ import love.forte.kopper.processor.mapper.impl.resolveToMapper
 private const val MAPPER_ANNOTATION_NAME = "love.forte.kopper.annotation.Mapper"
 
 internal class KopperProcessor(
-    val environment: SymbolProcessorEnvironment
+    private val environment: SymbolProcessorEnvironment
 ) : SymbolProcessor {
-
 
     override fun process(resolver: Resolver): List<KSAnnotated> {
         val mapperDeclarations = resolver.getSymbolsWithAnnotation(MAPPER_ANNOTATION_NAME)
@@ -39,11 +38,11 @@ internal class KopperProcessor(
             .map { mapperDeclaration ->
 
                 // Mapper
-                resolveToMapper(resolver, mapperDeclaration)
+                resolveToMapper(environment, resolver, mapperDeclaration)
 
                 // TODO
 
-            }
+            }.toList()
 
 
         return emptyList()

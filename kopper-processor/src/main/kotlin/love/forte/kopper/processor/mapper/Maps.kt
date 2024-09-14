@@ -16,64 +16,81 @@
 
 package love.forte.kopper.processor.mapper
 
+import com.google.devtools.ksp.getConstructors
+import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.KSValueParameter
 import com.google.devtools.ksp.symbol.Nullability
 import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.withIndent
 import love.forte.kopper.annotation.PropertyType
+import love.forte.kopper.processor.mapper.impl.MapTargetPropertyImpl
+import love.forte.kopper.processor.util.findProperty
+import love.forte.kopper.processor.util.isEvalExpression
 
 /**
  * A type as a mapping source.
  */
-public interface MapSource {
+internal interface MapSource {
+    /**
+     * Current [MapperMapSet]
+     */
+    val sourceSet: MapperMapSet
+
     /**
      * name of this source.
      */
-    public val name: String
+    val name: String
 
     /**
      * Type of this source.
      */
-    public val type: KSType
+    val type: KSType
+
+    /**
+     * Is a main source in [sourceSet]
+     */
+    val isMain: Boolean
 
     /**
      * Kotlin's nullable or Java's platform type.
      */
-    public val nullable: Boolean
+    val nullable: Boolean
         get() = type.nullability != Nullability.NOT_NULL
 
     /**
      * find a property from this source.
      */
-    public fun property(name: String, type: KSType, propertyType: PropertyType): MapSourceProperty?
+    fun property(namePath: String, propertyType: PropertyType): MapSourceProperty?
 }
 
 /**
  * A property for mapping source.
  */
-public interface MapSourceProperty {
-    public val source: MapSource
+internal interface MapSourceProperty {
+    val source: MapSource
 
     /**
      * Name of source property.
      */
-    public val name: String
+    val name: String
 
     /**
      * The [MapSourceProperty]'s [PropertyType].
      * - If it is a function, it must have no parameters and have a return value, e.g. `fun prop(): AType`.
      *   The `get` prefix is disregarded and its name can be specified manually and directly.
      */
-    public val propertyType: PropertyType
+    val propertyType: PropertyType
 
     /**
      * Type of this property.
      */
-    public val type: KSType
+    val type: KSType
 
     /**
      * Kotlin's nullable or Java's platform type.
      */
-    public val nullable: Boolean
+    val nullable: Boolean
         get() = type.nullability != Nullability.NOT_NULL
 
     /**
@@ -81,26 +98,222 @@ public interface MapSourceProperty {
      * @return An expression that can be stored by a local variable,
      * the type of the expression is type
      */
-    public fun read(): CodeBlock
+    fun read(): MapSourceReadProperty
 }
 
-/**
- * A type as a mapping target.
- */
-public interface MapTarget {
-    public val name: String
-    public val type: KSType
-    public val properties: List<MapTargetProperty>
+
+internal interface MapSourceReadProperty {
+    val property: MapSourceProperty
+    val name: String
+    val initialCode: CodeBlock
+
+    val readCode: CodeBlock
+        get() = CodeBlock.builder()
+            .apply {
+                add("val %L = ", name)
+                add(initialCode)
+            }
+            .build()
+}
+
+internal sealed class MapTarget protected constructor(
+    val mapSet: MapperMapSet,
+    val path: String,
+    val name: String,
+    val type: KSType,
+) {
+    /**
+     * Kotlin's nullable or Java's platform type.
+     */
+    open val nullable: Boolean
+        get() = type.nullability != Nullability.NOT_NULL
+
+    /**
+     * find a property from this target.
+     */
+    fun property(name: String, type: KSType, propertyType: PropertyType): MapTargetProperty? {
+        return findProperty(
+            name = name,
+            type = type,
+            propertyType = propertyType,
+            onProperty = {
+                MapTargetPropertyImpl(
+                    target = this,
+                    name = it.simpleName.asString(),
+                    propertyType = PropertyType.PROPERTY,
+                    type = it.type.resolve(),
+                )
+            },
+            onFunction = {
+                MapTargetPropertyImpl(
+                    target = this,
+                    name = it.simpleName.asString(),
+                    propertyType = PropertyType.PROPERTY,
+                    type = it.returnType!!.resolve(),
+                )
+            }
+        )
+    }
+
+    /**
+     * The initial code with [name] if needed.
+     */
+    abstract fun init(): CodeBlock?
+
+    companion object {
+        /**
+         * Create a [MapTarget] with return [type] only.
+         *
+         */
+        internal fun create(
+            mapSet: MapperMapSet,
+            path: String,
+            type: KSType,
+        ): MapTarget {
+            val name = "__target"
+            // TODO check type?
+            val classDl = (type.declaration as KSClassDeclaration)
+            val constructor = classDl.primaryConstructor ?: classDl.getConstructors().firstOrNull()
+
+            val requires: List<RequiredPair> = if (constructor == null) {
+                emptyList()
+            } else {
+                buildList {
+                    for (parameter in constructor.parameters) {
+                        require(parameter.isVal || parameter.isVar || parameter.hasDefault) {
+                            "Constructor's parameter must be a property or has default value, but $parameter"
+                        }
+
+                        val mapArg = mapSet.findTargetMapArg(path)?.takeUnless { it.source.isEvalExpression }
+                        val sourcePath =
+
+                        mapSet.findSourceProperty(path)
+
+                        val sourceProperty = mapSet.findSourceProperty(path)
+                            ?: error("Can't found source property for target [$path]")
+
+                        add(RequiredPair(parameter, sourceProperty))
+                    }
+                }
+            }
+
+            return InitialRequiredMapTarget(
+                mapSet = mapSet,
+                path = path,
+                name = name,
+                type = type,
+                requires = requires
+            )
+        }
+
+        /**
+         * Create a [MapTarget] with included [KSValueParameter]
+         *
+         */
+        internal fun create(
+            mapSet: MapperMapSet,
+            path: String,
+            parameter: KSValueParameter,
+            type: KSType,
+        ): MapTarget {
+            val name = parameter.name!!.asString()
+
+            return IncludedParameterMapTarget(
+                mapSet = mapSet,
+                path = path,
+                parameter = parameter,
+                name = name,
+                type = type,
+            )
+        }
+
+        /**
+         * Create a [MapTarget] with included [receiver]
+         *
+         */
+        internal fun create(
+            mapSet: MapperMapSet,
+            path: String,
+            receiver: KSType,
+            type: KSType,
+        ): MapTarget {
+            return ReceiverMapTarget(
+                mapSet = mapSet,
+                path = path,
+                name = "this",
+                type = type
+            )
+        }
+
+
+    }
+}
+
+internal data class RequiredPair(
+    val require: KSValueParameter,
+    val source: MapSourceProperty,
+)
+
+private class InitialRequiredMapTarget(
+    mapSet: MapperMapSet,
+    path: String,
+    name: String,
+    type: KSType,
+    val requires: List<RequiredPair>,
+) : MapTarget(mapSet, path, name, type) {
+    override fun init(): CodeBlock {
+        return CodeBlock.builder()
+            .apply {
+                add("val %L = %T(", name, type)
+                withIndent {
+                    requires.forEach { (require, source) ->
+                        add("%L = ", require.name!!.asString())
+                        if (require.type.resolve().nullability == Nullability.NOT_NULL && source.nullable) {
+                            add(source.read().initialCode)
+                            add("!!")
+                        } else {
+                            add(source.read().initialCode)
+                        }
+                        add(", ")
+                    }
+                }
+                add(")")
+            }
+            .build()
+    }
+
+}
+
+
+private class IncludedParameterMapTarget(
+    mapSet: MapperMapSet,
+    path: String,
+    val parameter: KSValueParameter,
+    name: String,
+    type: KSType,
+) : MapTarget(mapSet, path, name, type) {
+    override fun init(): CodeBlock? = null
+}
+
+private class ReceiverMapTarget(
+    mapSet: MapperMapSet,
+    path: String,
+    name: String,
+    type: KSType,
+) : MapTarget(mapSet, path, name, type) {
+    override fun init(): CodeBlock? = null
 }
 
 /**
  * A property for mapping target.
  */
-public interface MapTargetProperty {
+internal interface MapTargetProperty {
+    val target: MapTarget
+
     /**
      * Name of target property.
      */
-    public val name: String
+    val name: String
 
     /**
      * The [MapTargetProperty]'s [PropertyType].
@@ -108,16 +321,21 @@ public interface MapTargetProperty {
      * - If it is a function, it must have only one parameter, e.g. `fun prop(value: AType)`.
      *   The `set` prefix is disregarded and its name can be specified manually and directly.
      */
-    public val propertyType: PropertyType
+    val propertyType: PropertyType
 
     /**
      * Type of this property.
      */
-    public val type: KSType
+    val type: KSType
 
     /**
      * Kotlin's nullable or Java's platform type.
      */
-    public val nullable: Boolean
+    val nullable: Boolean
         get() = type.nullability != Nullability.NOT_NULL
+
+    /**
+     * Set the value from Source
+     */
+    fun set(source: MapSourceProperty, sourceCode: CodeBlock): CodeBlock
 }

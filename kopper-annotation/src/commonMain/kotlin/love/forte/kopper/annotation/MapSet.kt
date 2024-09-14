@@ -14,36 +14,16 @@
  * limitations under the License.
  */
 
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+package love.forte.kopper.annotation
 
+/**
+ * Some additional options for a MapSet.
+ *
+ * @property autoResolve Try to resolve all
+ * properties with same names automatically.
+ * Exclude properties used in special [Map].
+ */
+public annotation class MapSet(
+    val autoResolve: Boolean = true,
 
-plugins {
-    kotlin("jvm")
-    alias(libs.plugins.dokka)
-    alias(libs.plugins.ksp)
-}
-
-kotlin {
-    jvmToolchain(8)
-    compilerOptions {
-        javaParameters.set(true)
-        jvmTarget.set(JvmTarget.JVM_1_8)
-        freeCompilerArgs.addAll(
-            "-Xjvm-default=all",
-            "-Xjsr305=strict"
-        )
-    }
-}
-
-dependencies {
-    implementation(project(":kopper-annotation"))
-    ksp(project(":kopper-processor"))
-    testImplementation(kotlin("test"))
-}
-
-tasks.test {
-    useJUnitPlatform()
-}
-
-ksp {
-}
+)

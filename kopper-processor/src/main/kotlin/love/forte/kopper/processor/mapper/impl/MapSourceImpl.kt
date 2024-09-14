@@ -16,81 +16,154 @@
 
 package love.forte.kopper.processor.mapper.impl
 
-import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.CodeBlock
 import love.forte.kopper.annotation.PropertyType
 import love.forte.kopper.processor.mapper.MapSource
 import love.forte.kopper.processor.mapper.MapSourceProperty
+import love.forte.kopper.processor.mapper.MapSourceReadProperty
+import love.forte.kopper.processor.mapper.MapperMapSet
+import love.forte.kopper.processor.util.findProperty
 
-internal class ParameterMapSource(
+internal data class ParameterMapSource(
+    override val sourceSet: MapperMapSet,
+    override var isMain: Boolean,
     override val name: String,
     override val type: KSType,
 ) : MapSource {
-    override fun property(name: String, type: KSType, propertyType: PropertyType): MapSourceProperty? {
-        return when (propertyType) {
-            PropertyType.PROPERTY -> findPropProperty(name, type)
-            PropertyType.FUNCTION -> findFunProperty(name, type)
-            PropertyType.AUTO -> findPropProperty(name, type) ?: findFunProperty(name, type)
+    private val properties: MutableMap<String, MapSourceProperty> = mutableMapOf()
+
+    override fun property(
+        name: String,
+        propertyType: PropertyType
+    ): MapSourceProperty? {
+        // TODO split name path?
+
+        var find = properties[name]
+        if (find == null) {
+            find = findProperty(
+                name = name,
+                type = type,
+                propertyType = propertyType,
+                onProperty = {
+                    DirectMapSourceProperty(
+                        source = this,
+                        name = it.simpleName.asString(),
+                        propertyType = PropertyType.PROPERTY,
+                        type = it.type.resolve(),
+                    )
+                },
+                onFunction = {
+                    DirectMapSourceProperty(
+                        source = this,
+                        name = it.simpleName.asString(),
+                        propertyType = PropertyType.PROPERTY,
+                        type = it.returnType!!.resolve(),
+                    )
+                }
+            )?.also { properties[name] = it }
         }
-    }
 
-    private fun findPropProperty(name: String, type: KSType): MapSourceProperty? {
-        return (type.declaration as? KSClassDeclaration)
-            ?.getAllProperties()
-            // 返回值是 type
-            ?.firstOrNull { it.simpleName.asString() == name && it.type.resolve() == type }
-            ?.let { prop ->
-                MapSourcePropertyImpl(
-                    source = this,
-                    name = prop.simpleName.asString(),
-                    propertyType = PropertyType.PROPERTY,
-                    type = prop.type.resolve(),
-                )
-            }
-    }
-
-    private fun findFunProperty(name: String, type: KSType): MapSourceProperty? {
-        return (type.declaration as? KSClassDeclaration)
-            ?.getAllFunctions()
-            // 没有参数，有返回值，返回值是 type
-            ?.firstOrNull {
-                if (it.simpleName.asString() != name) return@firstOrNull false
-                if (it.parameters.isEmpty()) return@firstOrNull false
-                val returnType = it.returnType ?: return@firstOrNull false
-                returnType.resolve() == type
-            }
-            ?.let { func ->
-                MapSourcePropertyImpl(
-                    source = this,
-                    name = func.simpleName.asString(),
-                    propertyType = PropertyType.PROPERTY,
-                    type = func.returnType!!.resolve(),
-                )
-            }
+        return find
     }
 }
 
-
-internal class MapSourcePropertyImpl(
+internal data class DirectMapSourceProperty(
     override val source: MapSource,
     override val name: String,
     override val propertyType: PropertyType,
     override val type: KSType,
 ) : MapSourceProperty {
-    override fun read(): CodeBlock {
+    private var counter = 0
+
+    override fun read(): MapSourceReadProperty {
         val sourceNullable = source.nullable
-        return if (sourceNullable) {
-            when (propertyType) {
-                PropertyType.FUNCTION -> CodeBlock.of("%L?.%L()", source.name, name)
-                else -> CodeBlock.of("%L?.%L", source.name, name)
+        val conOp = if (sourceNullable) "?." else "."
+        val initialCode = when (propertyType) {
+            PropertyType.FUNCTION -> CodeBlock.of("%L${conOp}%L()", source.name, name)
+            else -> CodeBlock.of("%L${conOp}%L", source.name, name)
+        }
+
+        return MapSourceReadPropertyImpl(
+            name = "${source.name}_${name}_${counter++}",
+            initialCode = initialCode,
+            property = this
+        )
+    }
+}
+
+
+/**
+ * `a.b.c`
+ */
+internal class DeepPathMapSourceProperty(
+    override val source: MapSource,
+    private val parentProperty: MapSourceProperty,
+    /**
+     * Last final simple name.
+     */
+    override val name: String,
+    override val propertyType: PropertyType,
+    override val type: KSType,
+) : MapSourceProperty {
+    private var counter = 0
+
+    override fun read(): MapSourceReadProperty {
+        val sourceNullable = parentProperty.nullable
+        val parentPropertyReadCode = parentProperty.read()
+        val conOp = if (sourceNullable) "?." else "."
+        val initialCode = when (propertyType) {
+            PropertyType.FUNCTION -> {
+                CodeBlock.builder()
+                    .apply {
+                        add(parentPropertyReadCode.name)
+                        add(conOp)
+                        add("%L()", name)
+                    }.build()
             }
-        } else {
-            when (propertyType) {
-                PropertyType.FUNCTION -> CodeBlock.of("%L.%L()", source.name, name)
-                else -> CodeBlock.of("%L.%L", source.name, name)
+
+            else -> {
+                CodeBlock.builder()
+                    .apply {
+                        add(parentPropertyReadCode.name)
+                        add(conOp)
+                        add("%L", name)
+                    }
+                    .build()
             }
         }
-    }
 
+        return MapSourceReadPropertyImpl(
+            name = "${source.name}_${name}_${counter++}",
+            initialCode = initialCode,
+            property = this
+        )
+    }
 }
+
+
+internal class EvalSourceProperty(
+    override val name: String,
+    override val source: MapSource,
+    override val type: KSType,
+    private val eval: String,
+) : MapSourceProperty {
+    override val propertyType: PropertyType
+        get() = PropertyType.AUTO
+
+    override fun read(): MapSourceReadProperty {
+        return MapSourceReadPropertyImpl(
+            CodeBlock.of(eval),
+            property = this,
+            name = name
+        )
+    }
+}
+
+
+private data class MapSourceReadPropertyImpl(
+    override val initialCode: CodeBlock,
+    override val property: MapSourceProperty,
+    override val name: String
+) : MapSourceReadProperty
+

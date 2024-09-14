@@ -16,6 +16,9 @@
 
 package love.forte.kopper.annotation
 
+import kotlin.annotation.AnnotationTarget.FUNCTION
+import kotlin.annotation.AnnotationTarget.VALUE_PARAMETER
+
 /**
  * A property mapper marker
  *
@@ -34,11 +37,11 @@ package love.forte.kopper.annotation
  *
  */
 @Repeatable
-@Target(AnnotationTarget.FUNCTION)
-@Retention(AnnotationRetention.SOURCE)
+@Target(FUNCTION)
 public annotation class Map(
     val target: String,
     val source: String = SAME_AS_TARGET,
+    val sourceName: String = MAIN_SOURCE,
     val targetType: PropertyType = PropertyType.AUTO,
     val sourceType: PropertyType = PropertyType.AUTO,
     val ignore: Boolean = false,
@@ -47,15 +50,21 @@ public annotation class Map(
     /**
      * Mark as map target.
      */
-    @kotlin.annotation.Target(AnnotationTarget.VALUE_PARAMETER)
+    @kotlin.annotation.Target(VALUE_PARAMETER)
     public annotation class Target
 
+    @kotlin.annotation.Target(VALUE_PARAMETER)
+    public annotation class MainSource
 
+    public companion object {
+        /**
+         * Same as [Map.target] if [Map.source]'s value is an empty string.
+         *
+         * @see Map
+         */
+        public const val SAME_AS_TARGET: String = ""
+
+        public const val MAIN_SOURCE: String = ""
+    }
 }
 
-/**
- * Same as [Map.target] if [Map.source]'s value is an empty string.
- *
- * @see Map
- */
-internal const val SAME_AS_TARGET: String = ""

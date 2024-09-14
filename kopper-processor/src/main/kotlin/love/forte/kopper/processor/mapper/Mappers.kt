@@ -16,28 +16,34 @@
 
 package love.forte.kopper.processor.mapper
 
+import com.google.devtools.ksp.symbol.KSAnnotation
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
 import love.forte.kopper.annotation.MapperGenTarget
 import love.forte.kopper.annotation.MapperGenVisibility
+import love.forte.kopper.processor.util.findArg
+import love.forte.kopper.processor.util.isEvalExpression
 
 /**
  * A Mapper with a set of [MapperMapSet].
  */
-public interface Mapper {
+internal class Mapper(
     /**
      * The gen target name.
      */
-    public val targetName: String
-    public val targetPackage: String
+    val targetName: String,
+    val targetPackage: String,
 
     /**
      * The set of [MapperMapSet].
      */
-    public val mapSet: List<MapperMapSet>
+    val mapSet: MutableList<MapperMapSet> = mutableListOf(),
 
-    public val genTarget: MapperGenTarget
-    public val genVisibility: MapperGenVisibility
+    val genTarget: MapperGenTarget,
+    val genVisibility: MapperGenVisibility
+) {
+
+
 }
 
 /**
@@ -45,29 +51,74 @@ public interface Mapper {
  *
  * @author ForteScarlet
  */
-public interface MapperMapSet {
-    /**
-     * Sources in this mapper.
-     * The number of elements is at least one,
-     * and the first element is the `main` source.
-     */
-    public val sources: List<MapSource>
+internal class MapperMapSet internal constructor(
+    target: MapTarget? = null,
+    internal val sources: MutableList<MapSource> = mutableListOf(),
+    internal val maps: MutableList<MapperMap> = mutableListOf(),
+    private val mapArgs: List<MapArgs>
+) {
+    lateinit var target: MapTarget
 
-    public val mainSource: MapSource
-        get() = sources.first()
+    init {
+        if (target != null) {
+            this.target = target
+        }
+    }
 
-    public val target: MapTarget
+    val mainSource: MapSource
+        get() = sources.first { it.isMain }
 
-    public val maps: List<MapperMap>
+    fun findTargetMapArg(targetPath: String): MapArgs? {
+        return mapArgs.find { it.target == targetPath }
+    }
 
-    // Other options?
+    private val sourcesMapArgs: Map<String, Map<String, List<MapArgs>>> =
+        mapArgs
+            .filter { !it.source.isEvalExpression }
+            .groupBy { it.sourceName }
+            .mapValues { it.value.groupBy { v -> v.source } }
 
-    // gen
+    private val mapArgsTargetPathKey = mapArgs.associateBy { it.target }
 
-    /**
-     * Generate a [FunSpec]
-     */
-    public fun funSpec(): FunSpec
+    fun findSourceProperty(source: String?, pathName: String): MapSourceProperty? {
+        val mapSource = if (source == null) mainSource else sources.find { it.name == source }
+            ?: error("Can't find required source '$source'")
+
+        mapSource.property(pathName, )
+
+        TODO()
+
+        // return sourceProperties.computeIfAbsent(pathName) { p ->
+        //     resolveProperty(source, p)
+        // }
+    }
+
+    private fun resolveProperty(source: String?, path: String): MapSourceProperty {
+        if ('.' !in path) {
+            // new source property
+            val find = sourceProperties[path]
+            if (find == null) {
+                // TODO
+
+                TODO()
+            }
+        }
+
+
+        val parentName = path.substringBeforeLast('.')
+        val name = path.substringAfterLast('.')
+
+
+
+
+        TODO()
+
+
+    }
+
+    fun funSpec(): FunSpec {
+        TODO("Not yet implemented")
+    }
 }
 
 
@@ -87,7 +138,55 @@ public interface MapperMap {
     public val target: MapTarget
 
     /**
-     * Gen a [CodeBlock] for this map.
+     * The target property.
      */
-    public fun code(): CodeBlock
+    public val targetProperty: MapTargetProperty
+
+    /**
+     * Gen a [CodeBlock] for this map.
+     *
+     * @param index The index of this map.
+     */
+    public fun code(index: Int): CodeBlock
 }
+
+
+internal data class MapperArgs(
+    val genTarget: MapperGenTarget,
+    val visibility: MapperGenVisibility,
+
+    // name
+    val genTargetName: String,
+    val genTargetNamePrefix: String,
+    val genTargetNameSuffix: String,
+    val genTargetPackages: List<String>,
+) {
+    val packageName: String = genTargetPackages.joinToString(".")
+    inline fun targetName(declarationSimpleName: () -> String): String =
+        genTargetNamePrefix +
+            (genTargetName.takeIf { it.isNotEmpty() } ?: declarationSimpleName()) +
+            genTargetNameSuffix
+
+
+}
+
+internal fun KSAnnotation.resolveMapperArgs(): MapperArgs {
+    val genTarget: MapperGenTarget = findArg("genTarget")!!
+    val visibility: MapperGenVisibility = findArg("visibility")!!
+
+    // Name-related arguments
+    val genTargetName: String = findArg("genTargetName")!!
+    val genTargetNamePrefix: String = findArg("genTargetNamePrefix")!!
+    val genTargetNameSuffix: String = findArg("genTargetNameSuffix")!!
+    val genTargetPackages: List<String> = findArg<Array<String>>("genTargetPackages")!!.toList()
+
+    return MapperArgs(
+        genTarget = genTarget,
+        visibility = visibility,
+        genTargetName = genTargetName,
+        genTargetNamePrefix = genTargetNamePrefix,
+        genTargetNameSuffix = genTargetNameSuffix,
+        genTargetPackages = genTargetPackages
+    )
+}
+

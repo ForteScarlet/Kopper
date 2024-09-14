@@ -16,6 +16,9 @@
 
 package love.forte.kopper.processor.util
 
+import com.google.devtools.ksp.symbol.*
+import love.forte.kopper.annotation.PropertyType
+
 internal const val EVAL: String = "eval"
 
 /**
@@ -30,4 +33,47 @@ internal fun String.evalExpressionValue(): String {
     }
 
     return substring(EVAL.length + 1, length - 1)
+}
+
+
+internal inline fun <T> findProperty(
+    name: String,
+    type: KSType,
+    propertyType: PropertyType,
+    onProperty: (KSPropertyDeclaration) -> T?,
+    onFunction: (KSFunctionDeclaration) -> T?,
+): T? {
+    return when (propertyType) {
+        PropertyType.PROPERTY -> findPropProperty(name, type, onProperty)
+        PropertyType.FUNCTION -> findFunProperty(name, type, onFunction)
+        PropertyType.AUTO -> findPropProperty(name, type, onProperty)
+            ?: findFunProperty(name, type, onFunction)
+    }
+}
+
+
+private inline fun <T> findPropProperty(name: String, type: KSType, block: (KSPropertyDeclaration) -> T?): T? {
+    return (type.declaration as? KSClassDeclaration)
+        ?.getAllProperties()
+        // 返回值是 type
+        ?.firstOrNull { it.simpleName.asString() == name && it.type.resolve() == type }
+        ?.let(block)
+}
+
+private inline fun <T> findFunProperty(name: String, type: KSType, block: (KSFunctionDeclaration) -> T?): T? {
+    return (type.declaration as? KSClassDeclaration)
+        ?.getAllFunctions()
+        // 没有参数，有返回值，返回值是 type
+        ?.firstOrNull {
+            if (it.simpleName.asString() != name) return@firstOrNull false
+            if (it.parameters.isEmpty()) return@firstOrNull false
+            val returnType = it.returnType ?: return@firstOrNull false
+            returnType.resolve() == type
+        }
+        ?.let(block)
+}
+
+internal inline fun <reified T> KSAnnotation.findArg(name: String): T? {
+    return arguments.find { it.name?.asString() == name }
+        as? T
 }
