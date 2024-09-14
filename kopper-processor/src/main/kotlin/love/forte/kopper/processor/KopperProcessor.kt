@@ -22,6 +22,8 @@ import com.google.devtools.ksp.processing.SymbolProcessor
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.squareup.kotlinpoet.ksp.writeTo
+import love.forte.kopper.processor.mapper.Mapper
 import love.forte.kopper.processor.mapper.impl.resolveToMapper
 
 private const val MAPPER_ANNOTATION_NAME = "love.forte.kopper.annotation.Mapper"
@@ -30,29 +32,23 @@ internal class KopperProcessor(
     private val environment: SymbolProcessorEnvironment
 ) : SymbolProcessor {
 
+    private val mappers = mutableListOf<Mapper>()
+
     override fun process(resolver: Resolver): List<KSAnnotated> {
-        val mapperDeclarations = resolver.getSymbolsWithAnnotation(MAPPER_ANNOTATION_NAME)
+        resolver.getSymbolsWithAnnotation(MAPPER_ANNOTATION_NAME)
             .filterIsInstance<KSClassDeclaration>()
             // interface or abstract class.
             .filter { it.isAbstract() }
-            .map { mapperDeclaration ->
-
-                // Mapper
-                resolveToMapper(environment, resolver, mapperDeclaration)
-
-                // TODO
-
-            }.toList()
-
+            .forEach { mapperDeclaration ->
+                mappers.add(resolveToMapper(environment, resolver, mapperDeclaration))
+            }
 
         return emptyList()
     }
 
-    override fun onError() {
-        super.onError()
-    }
-
     override fun finish() {
-        super.finish()
+        mappers.forEach { mapper ->
+            mapper.generate().writeTo(codeGenerator = environment.codeGenerator, aggregating = true)
+        }
     }
 }

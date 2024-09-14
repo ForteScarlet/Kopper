@@ -20,14 +20,15 @@ import com.google.devtools.ksp.symbol.KSAnnotation
 import love.forte.kopper.annotation.Map
 import love.forte.kopper.annotation.PropertyType
 import love.forte.kopper.processor.util.findArg
+import love.forte.kopper.processor.util.findEnumArg
 
 internal data class MapArgs(
     val target: String,
     val source: String,
     val sourceName: String,
-    val targetType: PropertyType,
     val sourceType: PropertyType,
-    val ignore: Boolean
+    val ignore: Boolean,
+    val eval: String,
 )
 
 /**
@@ -37,16 +38,16 @@ internal fun KSAnnotation.resolveToMapArgs(): MapArgs {
     val target: String = findArg("target")!!
     val source: String = findArg("source")!!
     val sourceName: String = findArg("sourceName")!!
-    val targetType: PropertyType = findArg("targetType")!!
-    val sourceType: PropertyType = findArg("sourceType")!!
+    val sourceType: PropertyType = findEnumArg<PropertyType>("sourceType")!!
     val ignore: Boolean = findArg("ignore")!!
+    val eval: String = findArg("eval")!!
 
     return MapArgs(
         target = target,
         source = if (Map.SAME_AS_TARGET == source) target else source,
         sourceName = sourceName,
-        targetType = targetType,
         sourceType = sourceType,
-        ignore = ignore
+        ignore = ignore,
+        eval = eval,
     )
 }

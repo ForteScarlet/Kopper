@@ -52,16 +52,32 @@ internal inline fun <T> findProperty(
 }
 
 
-private inline fun <T> findPropProperty(name: String, type: KSType, block: (KSPropertyDeclaration) -> T?): T? {
-    return (type.declaration as? KSClassDeclaration)
+internal inline fun <T> findPropProperty(name: String, type: KSType, block: (KSPropertyDeclaration) -> T?): T? {
+    return type.declaration.asClassDeclaration()
         ?.getAllProperties()
         // 返回值是 type
-        ?.firstOrNull { it.simpleName.asString() == name && it.type.resolve() == type }
+        ?.firstOrNull { it.simpleName.asString() == name }
         ?.let(block)
 }
 
-private inline fun <T> findFunProperty(name: String, type: KSType, block: (KSFunctionDeclaration) -> T?): T? {
-    return (type.declaration as? KSClassDeclaration)
+internal inline fun <T> findPropOrConstructorProperty(
+    name: String,
+    type: KSType,
+    onParameter: (KSValueParameter) -> T?,
+    onProperty: (KSPropertyDeclaration) -> T?
+): T? {
+    val classDecl = type.declaration.asClassDeclaration() ?: return null
+    classDecl.primaryConstructor?.parameters?.firstOrNull { ksValueParameter ->
+        ksValueParameter.name?.asString() == name
+    }?.also {
+        return onParameter(it)
+    }
+
+    return findPropProperty(name, type, onProperty)
+}
+
+internal inline fun <T> findFunProperty(name: String, type: KSType, block: (KSFunctionDeclaration) -> T?): T? {
+    return type.declaration.asClassDeclaration()
         ?.getAllFunctions()
         // 没有参数，有返回值，返回值是 type
         ?.firstOrNull {
@@ -74,6 +90,53 @@ private inline fun <T> findFunProperty(name: String, type: KSType, block: (KSFun
 }
 
 internal inline fun <reified T> KSAnnotation.findArg(name: String): T? {
-    return arguments.find { it.name?.asString() == name }
+    return (
+        arguments.find { it.name?.asString() == name }?.value
+            ?: defaultArguments.find { it.name?.asString() == name }?.value
+        )
         as? T
+}
+
+internal inline fun <reified T> KSAnnotation.findListArg(name: String): List<T>? {
+    return findArg<List<T>>(name)
+}
+
+internal inline fun <reified T : Enum<T>> KSAnnotation.findEnumArg(name: String): T? {
+    val value = (
+        arguments.find { it.name?.asString() == name }?.value
+            ?: defaultArguments.find { it.name?.asString() == name }?.value
+        ) ?: return null
+
+    if (value is T) return value
+    // https://github.com/google/ksp/issues/429
+    val enumValue = ((value as? KSType)?.declaration as? KSClassDeclaration)?.simpleName?.asString()
+        ?: return null
+
+    return enumValueOf<T>(enumValue)
+}
+
+internal fun KSAnnotated.hasAnno(targetAnoType: KSType): Boolean =
+    annotations.any { ano ->
+        ano.annotationType.resolve().let { at ->
+            targetAnoType.isAssignableFrom(at)
+        }
+    }
+
+/**
+ * If is [KSClassDeclaration], return it,
+ * if is [KSTypeAlias], try again.
+ */
+internal tailrec fun KSDeclaration.asClassDeclaration(): KSClassDeclaration? {
+    if (this is KSClassDeclaration) return this
+    if (this !is KSTypeAlias) return null
+
+    return type.resolve().declaration.asClassDeclaration()
+}
+
+internal fun KSType.isMappableStructType(): Boolean {
+    return when (this.declaration) {
+        is KSClassDeclaration -> true
+        is KSTypeAlias -> true
+        else -> false
+    }
 }

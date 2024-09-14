@@ -22,7 +22,9 @@ import love.forte.kopper.annotation.Mapper
 data class SourceType1(val name: String, val age: Int)
 data class SourceType2(val size: Long)
 
-data class TargetType(val name: String, val age: Int, val size: Long)
+data class TargetType(val name: String, val age: Int, val size: Long) {
+    var size2: Long = 1L
+}
 
 /**
  *
@@ -31,9 +33,26 @@ data class TargetType(val name: String, val age: Int, val size: Long)
 @Mapper
 interface TestMapper {
 
+    // @Map("name", "name")
+    // @Map("age", "age")
+    @Map("size", sourceName = "source2")
+    @Map("size2", source = "size", sourceName = "source2")
+    fun SourceType1.mapTo1(source2: SourceType2): TargetType
+
     @Map("name", "name")
     @Map("age", "age")
-    @Map("size", "source2")
-    fun SourceType1.mapTo1(source2: SourceType2): TargetType
+    @Map("size", sourceName = "source2")
+    @Map("size2", source = "size", sourceName = "source2")
+    fun SourceType1.mapTo2(source2: SourceType2): TargetType
+
+    @Map("name", "name")
+    @Map("age", "age")
+    @Map("size", sourceName = "source2")
+    @Map("size2", source = "size", sourceName = "source2")
+    fun mapTo3(source1: SourceType1, source2: SourceType2): TargetType
+
+    @Map("size", sourceName = "source2")
+    @Map("size2", source = "size", sourceName = "source2")
+    fun mapTo4(source1: SourceType1, source2: SourceType2): TargetType
 
 }

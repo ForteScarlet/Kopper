@@ -17,51 +17,127 @@
 package love.forte.kopper.processor.mapper
 
 import com.google.devtools.ksp.getConstructors
+import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSValueParameter
 import com.google.devtools.ksp.symbol.Nullability
 import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.withIndent
 import love.forte.kopper.annotation.PropertyType
+import love.forte.kopper.processor.mapper.impl.DeepPathMapSourceProperty
+import love.forte.kopper.processor.mapper.impl.DirectMapSourceProperty
 import love.forte.kopper.processor.mapper.impl.MapTargetPropertyImpl
+import love.forte.kopper.processor.util.findPropProperty
 import love.forte.kopper.processor.util.findProperty
-import love.forte.kopper.processor.util.isEvalExpression
 
 /**
  * A type as a mapping source.
  */
-internal interface MapSource {
-    /**
-     * Current [MapperMapSet]
-     */
-    val sourceSet: MapperMapSet
+internal data class MapSource(
+    var sourceMapSet: MapperMapSet,
+    var isMain: Boolean = false,
+    var name: String,
+    var type: KSType,
+) {
+    private val logger: KSPLogger
+        get() = sourceMapSet.environment.logger
 
-    /**
-     * name of this source.
-     */
-    val name: String
-
-    /**
-     * Type of this source.
-     */
-    val type: KSType
-
-    /**
-     * Is a main source in [sourceSet]
-     */
-    val isMain: Boolean
-
-    /**
-     * Kotlin's nullable or Java's platform type.
-     */
     val nullable: Boolean
         get() = type.nullability != Nullability.NOT_NULL
 
-    /**
-     * find a property from this source.
-     */
-    fun property(namePath: String, propertyType: PropertyType): MapSourceProperty?
+    private val properties: MutableMap<String, MapSourceProperty> = mutableMapOf()
+    private val subSources: MutableMap<String, MapSource> = mutableMapOf()
+
+    fun property(
+        path: String,
+        propertyType: PropertyType
+    ): MapSourceProperty? {
+        return property(path, path, propertyType).also {
+            logger.info("Find property($path, $propertyType) in source $this: $it")
+        }
+    }
+
+    private fun property(
+        fullPath: String,
+        path: String,
+        propertyType: PropertyType
+    ): MapSourceProperty? {
+        if ('.' !in path) {
+            return if (fullPath != path) {
+                property0(path, propertyType)
+            } else {
+                property0(path, PropertyType.AUTO)
+            }
+        }
+
+        val name = path.substringBefore('.')
+        val currentProperty = property0(name, PropertyType.AUTO)
+            ?: return null
+
+        val subPath = path.substringAfter('.')
+
+        val subSource = subSources.computeIfAbsent(
+            currentProperty.name
+        ) {
+            MapSource(
+                sourceMapSet = sourceMapSet,
+                isMain = false,
+                name = currentProperty.name,
+                type = currentProperty.type
+            )
+        }
+
+        val subProperty = subSource.property(
+            fullPath,
+            subPath,
+            PropertyType.AUTO
+        ) ?: return null
+
+        return DeepPathMapSourceProperty(
+            source = subSource,
+            parentProperty = currentProperty,
+            name = name + "_" + subProperty.name, // TODO name?
+            propertyType = subProperty.propertyType,
+            type = subProperty.type,
+        )
+    }
+
+    private fun property0(
+        name: String,
+        propertyType: PropertyType
+    ): MapSourceProperty? {
+        var find = properties[name]
+        logger.info("property0($name, $propertyType), 1: $find")
+        if (find == null) {
+            find = findProperty(
+                name = name,
+                type = type,
+                propertyType = propertyType,
+                onProperty = {
+                    DirectMapSourceProperty(
+                        source = this,
+                        name = it.simpleName.asString(),
+                        propertyType = PropertyType.PROPERTY,
+                        type = it.type.resolve(),
+                    )
+                },
+                onFunction = {
+                    DirectMapSourceProperty(
+                        source = this,
+                        name = it.simpleName.asString(),
+                        propertyType = PropertyType.PROPERTY,
+                        type = it.returnType!!.resolve(),
+                    )
+                }
+            )?.also { properties[name] = it }
+            logger.info("property0($name, $propertyType), 2: $find")
+        }
+
+        logger.info("properties cache: $properties")
+        return find
+    }
 }
 
 /**
@@ -98,30 +174,23 @@ internal interface MapSourceProperty {
      * @return An expression that can be stored by a local variable,
      * the type of the expression is type
      */
-    fun read(): MapSourceReadProperty
+    fun read(): MapSourcePropertyRead
 }
 
 
-internal interface MapSourceReadProperty {
+internal interface MapSourcePropertyRead {
     val property: MapSourceProperty
     val name: String
     val initialCode: CodeBlock
-
-    val readCode: CodeBlock
-        get() = CodeBlock.builder()
-            .apply {
-                add("val %L = ", name)
-                add(initialCode)
-            }
-            .build()
 }
 
-internal sealed class MapTarget protected constructor(
+internal sealed class MapTarget(
     val mapSet: MapperMapSet,
-    val path: String,
     val name: String,
     val type: KSType,
 ) {
+    val targetSourceMap: MutableMap<String, MapSourceProperty> = mutableMapOf()
+
     /**
      * Kotlin's nullable or Java's platform type.
      */
@@ -131,34 +200,24 @@ internal sealed class MapTarget protected constructor(
     /**
      * find a property from this target.
      */
-    fun property(name: String, type: KSType, propertyType: PropertyType): MapTargetProperty? {
-        return findProperty(
+    fun property(name: String): MapTargetProperty? {
+        return findPropProperty(
             name = name,
             type = type,
-            propertyType = propertyType,
-            onProperty = {
-                MapTargetPropertyImpl(
-                    target = this,
-                    name = it.simpleName.asString(),
-                    propertyType = PropertyType.PROPERTY,
-                    type = it.type.resolve(),
-                )
-            },
-            onFunction = {
-                MapTargetPropertyImpl(
-                    target = this,
-                    name = it.simpleName.asString(),
-                    propertyType = PropertyType.PROPERTY,
-                    type = it.returnType!!.resolve(),
-                )
-            }
-        )
+        ) {
+            MapTargetPropertyImpl(
+                target = this,
+                name = it.simpleName.asString(),
+                propertyType = PropertyType.PROPERTY,
+                type = it.type.resolve(),
+            )
+        }
     }
 
     /**
      * The initial code with [name] if needed.
      */
-    abstract fun init(): CodeBlock?
+    abstract fun emitInit(writer: MapperMapSetWriter)
 
     companion object {
         /**
@@ -167,8 +226,8 @@ internal sealed class MapTarget protected constructor(
          */
         internal fun create(
             mapSet: MapperMapSet,
-            path: String,
             type: KSType,
+            targetSourceMap: MutableMap<String, MapSourceProperty>,
         ): MapTarget {
             val name = "__target"
             // TODO check type?
@@ -184,13 +243,8 @@ internal sealed class MapTarget protected constructor(
                             "Constructor's parameter must be a property or has default value, but $parameter"
                         }
 
-                        val mapArg = mapSet.findTargetMapArg(path)?.takeUnless { it.source.isEvalExpression }
-                        val sourcePath =
-
-                        mapSet.findSourceProperty(path)
-
-                        val sourceProperty = mapSet.findSourceProperty(path)
-                            ?: error("Can't found source property for target [$path]")
+                        val sourceProperty = targetSourceMap.remove(parameter.name!!.asString())
+                            ?: error("Source property for parameter ${parameter.name} not found.")
 
                         add(RequiredPair(parameter, sourceProperty))
                     }
@@ -199,7 +253,6 @@ internal sealed class MapTarget protected constructor(
 
             return InitialRequiredMapTarget(
                 mapSet = mapSet,
-                path = path,
                 name = name,
                 type = type,
                 requires = requires
@@ -212,7 +265,6 @@ internal sealed class MapTarget protected constructor(
          */
         internal fun create(
             mapSet: MapperMapSet,
-            path: String,
             parameter: KSValueParameter,
             type: KSType,
         ): MapTarget {
@@ -220,7 +272,6 @@ internal sealed class MapTarget protected constructor(
 
             return IncludedParameterMapTarget(
                 mapSet = mapSet,
-                path = path,
                 parameter = parameter,
                 name = name,
                 type = type,
@@ -233,19 +284,14 @@ internal sealed class MapTarget protected constructor(
          */
         internal fun create(
             mapSet: MapperMapSet,
-            path: String,
             receiver: KSType,
-            type: KSType,
         ): MapTarget {
             return ReceiverMapTarget(
                 mapSet = mapSet,
-                path = path,
                 name = "this",
-                type = type
+                type = receiver
             )
         }
-
-
     }
 }
 
@@ -256,15 +302,14 @@ internal data class RequiredPair(
 
 private class InitialRequiredMapTarget(
     mapSet: MapperMapSet,
-    path: String,
     name: String,
     type: KSType,
     val requires: List<RequiredPair>,
-) : MapTarget(mapSet, path, name, type) {
-    override fun init(): CodeBlock {
-        return CodeBlock.builder()
+) : MapTarget(mapSet, name, type) {
+    override fun emitInit(writer: MapperMapSetWriter) {
+        val code = CodeBlock.builder()
             .apply {
-                add("val %L = %T(", name, type)
+                add("val %L = %T(", name, type.toClassName())
                 withIndent {
                     requires.forEach { (require, source) ->
                         add("%L = ", require.name!!.asString())
@@ -280,6 +325,8 @@ private class InitialRequiredMapTarget(
                 add(")")
             }
             .build()
+
+        writer.add(code)
     }
 
 }
@@ -287,21 +334,19 @@ private class InitialRequiredMapTarget(
 
 private class IncludedParameterMapTarget(
     mapSet: MapperMapSet,
-    path: String,
     val parameter: KSValueParameter,
     name: String,
     type: KSType,
-) : MapTarget(mapSet, path, name, type) {
-    override fun init(): CodeBlock? = null
+) : MapTarget(mapSet, name, type) {
+    override fun emitInit(writer: MapperMapSetWriter) {}
 }
 
 private class ReceiverMapTarget(
     mapSet: MapperMapSet,
-    path: String,
     name: String,
     type: KSType,
-) : MapTarget(mapSet, path, name, type) {
-    override fun init(): CodeBlock? = null
+) : MapTarget(mapSet, name, type) {
+    override fun emitInit(writer: MapperMapSetWriter) {}
 }
 
 /**
@@ -334,8 +379,5 @@ internal interface MapTargetProperty {
     val nullable: Boolean
         get() = type.nullability != Nullability.NOT_NULL
 
-    /**
-     * Set the value from Source
-     */
-    fun set(source: MapSourceProperty, sourceCode: CodeBlock): CodeBlock
+    fun emit(writer: MapperMapSetWriter, source: MapSourceProperty)
 }

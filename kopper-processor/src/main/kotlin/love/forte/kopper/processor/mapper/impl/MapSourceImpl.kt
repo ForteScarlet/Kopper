@@ -21,52 +21,8 @@ import com.squareup.kotlinpoet.CodeBlock
 import love.forte.kopper.annotation.PropertyType
 import love.forte.kopper.processor.mapper.MapSource
 import love.forte.kopper.processor.mapper.MapSourceProperty
-import love.forte.kopper.processor.mapper.MapSourceReadProperty
-import love.forte.kopper.processor.mapper.MapperMapSet
-import love.forte.kopper.processor.util.findProperty
+import love.forte.kopper.processor.mapper.MapSourcePropertyRead
 
-internal data class ParameterMapSource(
-    override val sourceSet: MapperMapSet,
-    override var isMain: Boolean,
-    override val name: String,
-    override val type: KSType,
-) : MapSource {
-    private val properties: MutableMap<String, MapSourceProperty> = mutableMapOf()
-
-    override fun property(
-        name: String,
-        propertyType: PropertyType
-    ): MapSourceProperty? {
-        // TODO split name path?
-
-        var find = properties[name]
-        if (find == null) {
-            find = findProperty(
-                name = name,
-                type = type,
-                propertyType = propertyType,
-                onProperty = {
-                    DirectMapSourceProperty(
-                        source = this,
-                        name = it.simpleName.asString(),
-                        propertyType = PropertyType.PROPERTY,
-                        type = it.type.resolve(),
-                    )
-                },
-                onFunction = {
-                    DirectMapSourceProperty(
-                        source = this,
-                        name = it.simpleName.asString(),
-                        propertyType = PropertyType.PROPERTY,
-                        type = it.returnType!!.resolve(),
-                    )
-                }
-            )?.also { properties[name] = it }
-        }
-
-        return find
-    }
-}
 
 internal data class DirectMapSourceProperty(
     override val source: MapSource,
@@ -76,7 +32,7 @@ internal data class DirectMapSourceProperty(
 ) : MapSourceProperty {
     private var counter = 0
 
-    override fun read(): MapSourceReadProperty {
+    override fun read(): MapSourcePropertyRead {
         val sourceNullable = source.nullable
         val conOp = if (sourceNullable) "?." else "."
         val initialCode = when (propertyType) {
@@ -84,7 +40,7 @@ internal data class DirectMapSourceProperty(
             else -> CodeBlock.of("%L${conOp}%L", source.name, name)
         }
 
-        return MapSourceReadPropertyImpl(
+        return MapSourcePropertyReadImpl(
             name = "${source.name}_${name}_${counter++}",
             initialCode = initialCode,
             property = this
@@ -108,7 +64,7 @@ internal class DeepPathMapSourceProperty(
 ) : MapSourceProperty {
     private var counter = 0
 
-    override fun read(): MapSourceReadProperty {
+    override fun read(): MapSourcePropertyRead {
         val sourceNullable = parentProperty.nullable
         val parentPropertyReadCode = parentProperty.read()
         val conOp = if (sourceNullable) "?." else "."
@@ -133,7 +89,7 @@ internal class DeepPathMapSourceProperty(
             }
         }
 
-        return MapSourceReadPropertyImpl(
+        return MapSourcePropertyReadImpl(
             name = "${source.name}_${name}_${counter++}",
             initialCode = initialCode,
             property = this
@@ -151,8 +107,8 @@ internal class EvalSourceProperty(
     override val propertyType: PropertyType
         get() = PropertyType.AUTO
 
-    override fun read(): MapSourceReadProperty {
-        return MapSourceReadPropertyImpl(
+    override fun read(): MapSourcePropertyRead {
+        return MapSourcePropertyReadImpl(
             CodeBlock.of(eval),
             property = this,
             name = name
@@ -161,9 +117,9 @@ internal class EvalSourceProperty(
 }
 
 
-private data class MapSourceReadPropertyImpl(
+private data class MapSourcePropertyReadImpl(
     override val initialCode: CodeBlock,
     override val property: MapSourceProperty,
     override val name: String
-) : MapSourceReadProperty
+) : MapSourcePropertyRead
 

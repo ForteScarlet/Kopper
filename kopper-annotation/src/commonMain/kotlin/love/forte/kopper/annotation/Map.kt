@@ -33,7 +33,6 @@ import kotlin.annotation.AnnotationTarget.VALUE_PARAMETER
  * @param source The source property in a source model.
  * (with type [sourceType])
  * @param target The target property in a target model.
- * (with type [targetType])
  *
  */
 @Repeatable
@@ -42,9 +41,9 @@ public annotation class Map(
     val target: String,
     val source: String = SAME_AS_TARGET,
     val sourceName: String = MAIN_SOURCE,
-    val targetType: PropertyType = PropertyType.AUTO,
     val sourceType: PropertyType = PropertyType.AUTO,
     val ignore: Boolean = false,
+    val eval: String = ""
 ) {
 
     /**

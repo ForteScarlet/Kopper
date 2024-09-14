@@ -22,6 +22,7 @@ import love.forte.kopper.annotation.PropertyType
 import love.forte.kopper.processor.mapper.MapSourceProperty
 import love.forte.kopper.processor.mapper.MapTarget
 import love.forte.kopper.processor.mapper.MapTargetProperty
+import love.forte.kopper.processor.mapper.MapperMapSetWriter
 
 
 internal data class MapTargetPropertyImpl(
@@ -30,12 +31,17 @@ internal data class MapTargetPropertyImpl(
     override val propertyType: PropertyType,
     override val type: KSType,
 ) : MapTargetProperty {
-    override fun set(source: MapSourceProperty, sourceCode: CodeBlock): CodeBlock {
+    override fun emit(writer: MapperMapSetWriter, source: MapSourceProperty) {
         val propCon = if (target.nullable) "?." else "."
+        val sourceCode = source.read().initialCode
+        val sourceNullable = source.nullable
+        val sourceCon = if (sourceNullable) "?." else "."
 
-        return when (propertyType) {
+        val safeSet = nullable || (!nullable && !sourceNullable)
+
+        val code = when (propertyType) {
             PropertyType.FUNCTION -> {
-                if (nullable) {
+                if (safeSet) {
                     CodeBlock.builder().apply {
                         // %L?.%L(code)
                         add("%L", target.name)
@@ -48,13 +54,13 @@ internal data class MapTargetPropertyImpl(
                     CodeBlock.builder()
                         .apply {
                             add(sourceCode)
-                            add("${propCon}also { %L?.%L(it) }", target.name, name)
+                            add("${sourceCon}also { %L${propCon}%L(it) }", target.name, name)
                         }.build()
                 }
             }
 
             else -> {
-                if (nullable) {
+                if (safeSet) {
                     CodeBlock.builder().apply {
                         // %L?.%L = code
                         add("%L", target.name)
@@ -66,10 +72,12 @@ internal data class MapTargetPropertyImpl(
                     CodeBlock.builder()
                         .apply {
                             add(sourceCode)
-                            add("${propCon}also { %L?.%L = it }", target.name, name)
+                            add("${sourceCon}also { %L${propCon}%L = it }", target.name, name)
                         }.build()
                 }
             }
         }
+
+        writer.add(code)
     }
 }

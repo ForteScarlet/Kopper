@@ -33,27 +33,22 @@ internal data class PropertyMapperMap(
     override val target: MapTarget,
     override val targetProperty: MapTargetProperty
 ) : MapperMap {
-    override fun code(index: Int): CodeBlock {
-        val code = CodeBlock.builder()
-        // init source code
-        val sourceProp = "_s_${source.name}_$index"
-        val sourceParamCode = CodeBlock
-            .builder()
-            .apply {
-                add("val %L = ", sourceProp)
-                add(sourceProperty.read().name)
-            }
-            .build()
+    override fun emit(writer: MapperMapSetWriter, index: Int) {
+        // val code = CodeBlock.builder()
+        // // init source code
+        // val sourceProp = "_s_${source.name}_$index"
+        // val sourceParamCode = CodeBlock
+        //     .builder()
+        //     .apply {
+        //         add("val %L = ", sourceProp)
+        //         add(sourceProperty.read().name)
+        //     }
+        //     .build()
+        //
+        // code.add(sourceParamCode)
+        // code.addStatement("")
 
-        code.add(sourceParamCode)
-        code.addStatement("")
-
-        // set to property
-        val setCode = targetProperty.set(sourceProperty, CodeBlock.of("%L", sourceProp))
-        code.add(setCode)
-        // new line.
-        code.addStatement("")
-
-        return code.build()
+        targetProperty.emit(writer, sourceProperty)
+        writer.add("\n")
     }
 }

@@ -23,32 +23,43 @@ import com.squareup.kotlinpoet.FunSpec
 // MapperMapSet -> A fun in Mapper.
 // MapperMap -> A @Map or a pair of mapping properties
 
-public class MapperBuilderImpl(
+internal class MapperWriter(
     private val collect: MutableCollection<FunSpec.Builder> =
         mutableListOf()
 ) {
-    public fun add(funSpec: FunSpec.Builder) {
+    fun add(funSpec: FunSpec.Builder) {
         collect.add(funSpec)
     }
 }
 
-public class MapperMapSetBuilder(
+internal class MapperMapSetWriter(
     private val root: FunSpec.Builder,
+    private val extensions: MutableList<FunSpec.Builder> = mutableListOf(),
     private val stacks: ArrayDeque<FunSpec.Builder> = ArrayDeque()
 ) {
-    public fun add(code: CodeBlock) {
+    fun add(code: CodeBlock) {
         if (stacks.isEmpty()) {
             root.addCode(code)
         } else {
             stacks.last().addCode(code)
         }
     }
-
-    public fun push(funSpec: FunSpec.Builder) {
-        stacks.addLast(funSpec)
+    fun add(format: String, vararg args: Any?) {
+        if (stacks.isEmpty()) {
+            root.addCode(format, *args)
+        } else {
+            stacks.last().addCode(format, *args)
+        }
     }
 
-    public fun pop(): FunSpec.Builder {
+    fun push(funSpec: FunSpec.Builder, remember: Boolean = false) {
+        stacks.addLast(funSpec)
+        if (remember) {
+            extensions.add(funSpec)
+        }
+    }
+
+    fun pop(): FunSpec.Builder {
         if (stacks.isEmpty()) {
             return root
         }

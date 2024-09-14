@@ -74,27 +74,6 @@ public enum class MapperGenTarget {
      *
      */
     OBJECT,
-
-    /**
-     * Generate the mapper implement
-     * based on mapper interface's abstract @[Map] functions.
-     *
-     * ```Kotlin
-     * @Mapper(genTarget = CLASS)
-     * interface MyMapper {
-     *     fun Source.mapTo(): Target
-     * }
-     *
-     * // Generated:
-     * // file name: MyMapperImpl.kt
-     *
-     * fun Source.mapTo(): Target {
-     *   // ...
-     * }
-     *
-     * ```
-     */
-    TOP_FUN,
 }
 
 public enum class MapperGenVisibility {
