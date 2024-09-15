@@ -16,18 +16,15 @@
 
 package love.forte.kopper.processor.mapper.impl
 
+import com.google.devtools.ksp.containingFile
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
-import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.KSFunctionDeclaration
-import com.google.devtools.ksp.symbol.KSType
-import com.google.devtools.ksp.symbol.KSValueParameter
+import com.google.devtools.ksp.symbol.*
 import love.forte.kopper.annotation.Map
 import love.forte.kopper.annotation.PropertyType
 import love.forte.kopper.processor.mapper.*
 import love.forte.kopper.processor.util.asClassDeclaration
-import love.forte.kopper.processor.util.findPropOrConstructorProperty
 import love.forte.kopper.processor.util.hasAnno
 
 internal fun resolveToMapper(
@@ -35,6 +32,9 @@ internal fun resolveToMapper(
     resolver: Resolver,
     declaration: KSClassDeclaration
 ): Mapper {
+    val originFiles = mutableListOf<KSFile>()
+    declaration.containingFile?.also { originFiles.add(it) }
+
     val mapperAnnoType = resolver.getClassDeclarationByName<love.forte.kopper.annotation.Mapper>()
         ?: error("Cannot find Mapper annotation declaration.")
 
@@ -47,11 +47,9 @@ internal fun resolveToMapper(
 
     val mapperArgs = mapperAnnotation.resolveMapperArgs()
     val mapperName = mapperArgs.targetName { declaration.simpleName.asString() }
-    //
-    // val mappers = mutableListOf<FunSpec.Builder>()
-    // val mapperBuilder = MapperBuilderImpl(mappers)
 
     val mapSet = resolveMapSets(
+        originFiles = originFiles,
         environment = environment,
         resolver = resolver,
         declaration = declaration,
@@ -59,16 +57,20 @@ internal fun resolveToMapper(
     )
 
     return Mapper(
+        environment = environment,
+        resolver = resolver,
         targetName = mapperName,
         targetPackage = mapperArgs.packageName,
         mapSets = mapSet,
         superType = declaration,
         genTarget = mapperArgs.genTarget,
-        genVisibility = mapperArgs.visibility
+        genVisibility = mapperArgs.visibility,
+        originatingKSFiles = originFiles,
     )
 }
 
 internal fun resolveMapSets(
+    originFiles: MutableList<KSFile>,
     environment: SymbolProcessorEnvironment,
     resolver: Resolver,
     declaration: KSClassDeclaration,
@@ -81,24 +83,11 @@ internal fun resolveMapSets(
     return abstractFunctions
         .mapTo(mutableListOf()) { mapFun ->
             val mapSet = mapFun.resolveToMapSet(
+                originFiles,
                 environment,
                 resolver,
                 mapAnnoType,
             )
-
-            // val mapSet = MapperMapSet(
-            //
-            //     target = null,
-            //     mapArgs = mapArgList,
-            // )
-            //
-            // mapFun.resolveMapperMapFromMapAno(
-            //     resolver = resolver,
-            //     environment = environment,
-            //     mapSet = mapSet,
-            //     container = declaration,
-            //     mapAnnoType = mapAnnoType
-            // )
 
             mapSet
         }
@@ -106,6 +95,7 @@ internal fun resolveMapSets(
 }
 
 internal fun KSFunctionDeclaration.resolveToMapSet(
+    originFiles: MutableList<KSFile>,
     environment: SymbolProcessorEnvironment,
     resolver: Resolver,
     mapAnnoType: KSClassDeclaration,
@@ -142,7 +132,18 @@ internal fun KSFunctionDeclaration.resolveToMapSet(
     // resolve maps
     mapSet.resolveMaps()
 
+    // resolve originFiles
+    resolveOriginFiles(this, originFiles)
+
     return mapSet
+}
+
+internal fun resolveOriginFiles(sourceFun: KSFunctionDeclaration, originFiles: MutableList<KSFile>) {
+    fun KSNode.doAdd() { containingFile?.also(originFiles::add) }
+
+    sourceFun.extensionReceiver?.doAdd()
+    sourceFun.parameters.forEach { it.doAdd() }
+    sourceFun.returnType?.doAdd()
 }
 
 /**
@@ -163,7 +164,8 @@ internal fun MapperMapSet.resourceTargets(
     val targetType: KSType =
         sourceFun.extensionReceiver
             ?.takeIf { it.hasAnno(mapTargetType.asStarProjectedType()) }
-            ?.resolve()?.also { receiver = it }
+            ?.resolve()
+            ?.also { receiver = it }
             ?: sourceFun.parameters
                 .firstOrNull {
                     it.hasAnno(mapTargetType.asStarProjectedType())
@@ -193,8 +195,18 @@ internal fun MapperMapSet.resourceTargets(
                     if (argSourceName.isEmpty()) sources.first { it.isMain }
                     else sources.first { it.name == argSourceName }
 
-                targetSource.property(targetArg.source, targetArg.sourceType)
-                    ?: error("Source property ${targetArg.source} for target property [$path] is not found.")
+                // 如果eval有效, 构建 eval property
+                if (targetArg.isEvalValid) {
+                    EvalSourceProperty(
+                        name = "${name}_eval",
+                        source = this.sources.first { it.isMain },
+                        nullable = targetArg.evalNullable,
+                        eval = targetArg.eval,
+                    )
+                } else {
+                    targetSource.property(targetArg.source, targetArg.sourceType)
+                        ?: error("Source property ${targetArg.source} for target property [$path] is not found.")
+                }
             } else {
                 // 没有，去 source 找同名同路径的
                 sources.sortedByDescending { it.isMain }.firstNotNullOfOrNull { mapSource ->
@@ -281,15 +293,34 @@ internal fun MapperMapSet.resolveSources(
  */
 internal fun MapperMapSet.resolveMaps() {
     for ((target, property) in target.targetSourceMap) {
+        // ignore, eval
+        val mapArgs = mapArgs.find { it.target == target }
+        if (mapArgs?.ignore == true) {
+            environment.logger.info("Target $target in $this is ignore.")
+        }
+
+
         val targetProperty = this.target.property(target)
             ?: error("unknown target $target from ${this.target}")
 
-        val map = PropertyMapperMap(
-            source = property.source,
-            sourceProperty = property,
-            target = this.target,
-            targetProperty = targetProperty
-        )
+        val map = if (mapArgs?.isEvalValid == true) {
+            val eval = mapArgs.eval
+            val evalNullable = mapArgs.evalNullable
+
+            EvalMapperMap(
+                eval = eval,
+                evalNullable = evalNullable,
+                target = this.target,
+                targetProperty = targetProperty
+            )
+        } else {
+            PropertyMapperMap(
+                source = property.source,
+                sourceProperty = property,
+                target = this.target,
+                targetProperty = targetProperty
+            )
+        }
 
         this.maps.add(map)
     }

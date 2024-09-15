@@ -14,41 +14,45 @@
  * limitations under the License.
  */
 
-package love.forte.kopper.processor.mapper.impl
+package love.forte.kopper.processor.mapper
 
 import com.squareup.kotlinpoet.CodeBlock
-import love.forte.kopper.processor.mapper.*
+
+/**
+ * A single map in [MapperMapSet].
+ */
+internal interface MapperMap {
+    /**
+     * Emit current Map to [writer].
+     */
+    fun emit(writer: MapperMapSetWriter, index: Int)
+}
+
 
 internal data class PropertyMapperMap(
     /**
      * The source. If the source is an eval expression,
      * the source will be the main source.
      */
-    override val source: MapSource,
+    val source: MapSource,
     val sourceProperty: MapSourceProperty,
-
-    /**
-     * The target.
-     */
-    override val target: MapTarget,
-    override val targetProperty: MapTargetProperty
+    val target: MapTarget,
+    val targetProperty: MapTargetProperty
 ) : MapperMap {
     override fun emit(writer: MapperMapSetWriter, index: Int) {
-        // val code = CodeBlock.builder()
-        // // init source code
-        // val sourceProp = "_s_${source.name}_$index"
-        // val sourceParamCode = CodeBlock
-        //     .builder()
-        //     .apply {
-        //         add("val %L = ", sourceProp)
-        //         add(sourceProperty.read().name)
-        //     }
-        //     .build()
-        //
-        // code.add(sourceParamCode)
-        // code.addStatement("")
-
-        targetProperty.emit(writer, sourceProperty)
-        writer.add("\n")
+        targetProperty.emit(writer, sourceProperty.read())
     }
 }
+
+internal data class EvalMapperMap(
+    val eval: String,
+    val evalNullable: Boolean,
+    val target: MapTarget,
+    val targetProperty: MapTargetProperty
+) : MapperMap {
+    override fun emit(writer: MapperMapSetWriter, index: Int) {
+        targetProperty.emit(writer, PropertyRead(name = "eval", CodeBlock.of(eval), nullable = evalNullable))
+    }
+}
+
+// TODO submodel (sub mapSet) mapper map?

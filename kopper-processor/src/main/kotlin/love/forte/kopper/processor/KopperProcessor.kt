@@ -48,7 +48,11 @@ internal class KopperProcessor(
 
     override fun finish() {
         mappers.forEach { mapper ->
-            mapper.generate().writeTo(codeGenerator = environment.codeGenerator, aggregating = true)
+            mapper.generate().writeTo(
+                codeGenerator = environment.codeGenerator,
+                aggregating = true,
+                originatingKSFiles = mapper.originatingKSFiles
+            )
         }
     }
 }

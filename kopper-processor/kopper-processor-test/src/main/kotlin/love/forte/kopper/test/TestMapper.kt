@@ -19,40 +19,173 @@ package love.forte.kopper.test
 import love.forte.kopper.annotation.Map
 import love.forte.kopper.annotation.Mapper
 
-data class SourceType1(val name: String, val age: Int)
-data class SourceType2(val size: Long)
+@Mapper
+interface TestMapperWithoutTarget {
+    data class Source1(val name: String, val age: Int)
+    data class Source2(val size: Long)
 
-data class TargetType(val name: String, val age: Int, val size: Long) {
-    var size2: Long = 1L
+    data class Target(val name: String, val age: Int, val size: Long) {
+        var size2: Long = 1L
+    }
+
+    @Map("size", sourceName = "source2")
+    @Map("size2", source = "size", sourceName = "source2")
+    fun Source1.mapTo1(source2: Source2): Target
+
+    @Map("name", "name")
+    @Map("age", "age")
+    @Map("size", sourceName = "source2")
+    @Map("size2", source = "size", sourceName = "source2")
+    fun Source1.mapTo2(source2: Source2): Target
+
+    @Map("name", "name")
+    @Map("age", "age")
+    @Map("size", sourceName = "source2")
+    @Map("size2", source = "size", sourceName = "source2")
+    fun mapTo3(source1: Source1, source2: Source2): Target
+
+    @Map("size", sourceName = "source2")
+    @Map("size2", source = "size", sourceName = "source2")
+    fun mapTo4(source1: Source1, source2: Source2): Target
+
 }
 
-/**
- *
- * @author ForteScarlet
- */
 @Mapper
-interface TestMapper {
+interface TestMapperIncludedTarget {
+    data class Source1(val name: String, val age: Int)
+    data class NullableSource1(val name: String?, val age: Int)
+    data class Source2(val size: Long)
 
-    // @Map("name", "name")
-    // @Map("age", "age")
+    class Target {
+        lateinit var name: String
+        var age: Int = 0
+        var size: Long = 0L
+        var size2: Long = 1L
+    }
+
     @Map("size", sourceName = "source2")
     @Map("size2", source = "size", sourceName = "source2")
-    fun SourceType1.mapTo1(source2: SourceType2): TargetType
+    fun Source1.mapTo1(source2: Source2, @Map.Target target: Target): Target
 
     @Map("name", "name")
     @Map("age", "age")
     @Map("size", sourceName = "source2")
     @Map("size2", source = "size", sourceName = "source2")
-    fun SourceType1.mapTo2(source2: SourceType2): TargetType
+    fun Source1.mapTo2(source2: Source2, @Map.Target target: Target): Target
 
     @Map("name", "name")
     @Map("age", "age")
     @Map("size", sourceName = "source2")
     @Map("size2", source = "size", sourceName = "source2")
-    fun mapTo3(source1: SourceType1, source2: SourceType2): TargetType
+    fun mapTo3(source1: Source1, source2: Source2, @Map.Target target: Target): Target
 
     @Map("size", sourceName = "source2")
     @Map("size2", source = "size", sourceName = "source2")
-    fun mapTo4(source1: SourceType1, source2: SourceType2): TargetType
+    fun mapTo4(source1: Source1, source2: Source2, @Map.Target target: Target): Target
+
+    @Map("size", sourceName = "source2")
+    @Map("size2", source = "size", sourceName = "source2")
+    fun Source1.mapTo2_1(source2: Source2, @Map.Target target: Target)
+
+    @Map("name", "name")
+    @Map("age", "age")
+    @Map("size", sourceName = "source2")
+    @Map("size2", source = "size", sourceName = "source2")
+    fun Source1.mapTo2_2(source2: Source2, @Map.Target target: Target)
+
+    @Map("name", "name")
+    @Map("age", "age")
+    @Map("size", sourceName = "source2")
+    @Map("size2", source = "size", sourceName = "source2")
+    fun mapTo2_3(source1: Source1, source2: Source2, @Map.Target target: Target)
+
+    @Map("size", sourceName = "source2")
+    @Map("size2", source = "size", sourceName = "source2")
+    fun mapTo2_4(source1: Source1, source2: Source2, @Map.Target target: Target)
+
+}
+
+@Mapper
+interface NullableTestMapperWithoutTarget {
+    data class Source1(val name: String?, val age: Int?)
+    data class Source2(val size: Long)
+
+    data class Target(val name: String, val age: Int, val size: Long) {
+        var size2: Long = 1L
+    }
+
+    @Map("size", sourceName = "source2")
+    @Map("size2", source = "size", sourceName = "source2")
+    fun Source1.mapTo1(source2: Source2): Target
+
+    @Map("name", "name")
+    @Map("age", "age")
+    @Map("size", sourceName = "source2")
+    @Map("size2", source = "size", sourceName = "source2")
+    fun Source1.mapTo2(source2: Source2): Target
+
+    @Map("name", "name")
+    @Map("age", "age")
+    @Map("size", sourceName = "source2")
+    @Map("size2", source = "size", sourceName = "source2")
+    fun mapTo3(source1: Source1, source2: Source2): Target
+
+    @Map("size", sourceName = "source2")
+    @Map("size2", source = "size", sourceName = "source2")
+    fun mapTo4(source1: Source1, source2: Source2): Target
+
+}
+
+@Mapper
+interface NullableTestMapperIncludedTarget {
+    data class Source1(val name: String?, val age: Int?)
+    data class Source2(val size: Long)
+
+    class Target {
+        lateinit var name: String
+        var age: Int = 0
+        var size: Long = 0L
+        var size2: Long = 1L
+    }
+
+    @Map("size", sourceName = "source2")
+    @Map("size2", source = "size", sourceName = "source2")
+    fun Source1.mapTo1(source2: Source2, @Map.Target target: Target): Target
+
+    @Map("name", "name")
+    @Map("age", "age")
+    @Map("size", sourceName = "source2")
+    @Map("size2", source = "size", sourceName = "source2")
+    fun Source1.mapTo2(source2: Source2, @Map.Target target: Target): Target
+
+    @Map("name", "name")
+    @Map("age", "age")
+    @Map("size", sourceName = "source2")
+    @Map("size2", source = "size", sourceName = "source2")
+    fun mapTo3(source1: Source1, source2: Source2, @Map.Target target: Target): Target
+
+    @Map("size", sourceName = "source2")
+    @Map("size2", source = "size", sourceName = "source2")
+    fun mapTo4(source1: Source1, source2: Source2, @Map.Target target: Target): Target
+
+    @Map("size", sourceName = "source2")
+    @Map("size2", source = "size", sourceName = "source2")
+    fun Source1.mapTo2_1(source2: Source2, @Map.Target target: Target)
+
+    @Map("name", "name")
+    @Map("age", "age")
+    @Map("size", sourceName = "source2")
+    @Map("size2", source = "size", sourceName = "source2")
+    fun Source1.mapTo2_2(source2: Source2, @Map.Target target: Target)
+
+    @Map("name", "name")
+    @Map("age", "age")
+    @Map("size", sourceName = "source2")
+    @Map("size2", source = "size", sourceName = "source2")
+    fun mapTo2_3(source1: Source1, source2: Source2, @Map.Target target: Target)
+
+    @Map("size", sourceName = "source2")
+    @Map("size2", source = "size", sourceName = "source2")
+    fun mapTo2_4(source1: Source1, source2: Source2, @Map.Target target: Target)
 
 }

@@ -21,7 +21,8 @@ import com.squareup.kotlinpoet.CodeBlock
 import love.forte.kopper.annotation.PropertyType
 import love.forte.kopper.processor.mapper.MapSource
 import love.forte.kopper.processor.mapper.MapSourceProperty
-import love.forte.kopper.processor.mapper.MapSourcePropertyRead
+import love.forte.kopper.processor.mapper.MapSourceTypedProperty
+import love.forte.kopper.processor.mapper.PropertyRead
 
 
 internal data class DirectMapSourceProperty(
@@ -29,10 +30,8 @@ internal data class DirectMapSourceProperty(
     override val name: String,
     override val propertyType: PropertyType,
     override val type: KSType,
-) : MapSourceProperty {
-    private var counter = 0
-
-    override fun read(): MapSourcePropertyRead {
+) : MapSourceTypedProperty {
+    override fun read(): PropertyRead {
         val sourceNullable = source.nullable
         val conOp = if (sourceNullable) "?." else "."
         val initialCode = when (propertyType) {
@@ -40,10 +39,11 @@ internal data class DirectMapSourceProperty(
             else -> CodeBlock.of("%L${conOp}%L", source.name, name)
         }
 
-        return MapSourcePropertyReadImpl(
-            name = "${source.name}_${name}_${counter++}",
-            initialCode = initialCode,
-            property = this
+        return PropertyRead(
+            name = source.name,
+            code = initialCode,
+            nullable = nullable,
+            type = type,
         )
     }
 }
@@ -61,18 +61,15 @@ internal class DeepPathMapSourceProperty(
     override val name: String,
     override val propertyType: PropertyType,
     override val type: KSType,
-) : MapSourceProperty {
-    private var counter = 0
-
-    override fun read(): MapSourcePropertyRead {
-        val sourceNullable = parentProperty.nullable
+) : MapSourceTypedProperty {
+    override fun read(): PropertyRead {
         val parentPropertyReadCode = parentProperty.read()
-        val conOp = if (sourceNullable) "?." else "."
+        val conOp = if (parentPropertyReadCode.nullable) "?." else "."
         val initialCode = when (propertyType) {
             PropertyType.FUNCTION -> {
                 CodeBlock.builder()
                     .apply {
-                        add(parentPropertyReadCode.name)
+                        add(parentPropertyReadCode.code)
                         add(conOp)
                         add("%L()", name)
                     }.build()
@@ -81,7 +78,7 @@ internal class DeepPathMapSourceProperty(
             else -> {
                 CodeBlock.builder()
                     .apply {
-                        add(parentPropertyReadCode.name)
+                        add(parentPropertyReadCode.code)
                         add(conOp)
                         add("%L", name)
                     }
@@ -89,10 +86,11 @@ internal class DeepPathMapSourceProperty(
             }
         }
 
-        return MapSourcePropertyReadImpl(
-            name = "${source.name}_${name}_${counter++}",
-            initialCode = initialCode,
-            property = this
+        return PropertyRead(
+            name = source.name,
+            code = initialCode,
+            nullable = nullable,
+            type = type,
         )
     }
 }
@@ -101,25 +99,20 @@ internal class DeepPathMapSourceProperty(
 internal class EvalSourceProperty(
     override val name: String,
     override val source: MapSource,
-    override val type: KSType,
+    override val nullable: Boolean,
     private val eval: String,
 ) : MapSourceProperty {
     override val propertyType: PropertyType
         get() = PropertyType.AUTO
 
-    override fun read(): MapSourcePropertyRead {
-        return MapSourcePropertyReadImpl(
-            CodeBlock.of(eval),
-            property = this,
-            name = name
+    override fun read(): PropertyRead {
+        return PropertyRead(
+            name = name,
+            code = CodeBlock.of(eval),
+            nullable = nullable,
+            type = null,
         )
     }
 }
 
-
-private data class MapSourcePropertyReadImpl(
-    override val initialCode: CodeBlock,
-    override val property: MapSourceProperty,
-    override val name: String
-) : MapSourcePropertyRead
 

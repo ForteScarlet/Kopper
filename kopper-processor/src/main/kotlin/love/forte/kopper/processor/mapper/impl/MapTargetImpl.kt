@@ -19,10 +19,11 @@ package love.forte.kopper.processor.mapper.impl
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.CodeBlock
 import love.forte.kopper.annotation.PropertyType
-import love.forte.kopper.processor.mapper.MapSourceProperty
+import love.forte.kopper.processor.mapper.*
 import love.forte.kopper.processor.mapper.MapTarget
 import love.forte.kopper.processor.mapper.MapTargetProperty
 import love.forte.kopper.processor.mapper.MapperMapSetWriter
+import love.forte.kopper.processor.mapper.PropertyRead
 
 
 internal data class MapTargetPropertyImpl(
@@ -31,10 +32,11 @@ internal data class MapTargetPropertyImpl(
     override val propertyType: PropertyType,
     override val type: KSType,
 ) : MapTargetProperty {
-    override fun emit(writer: MapperMapSetWriter, source: MapSourceProperty) {
+    override fun emit(writer: MapperMapSetWriter, read: PropertyRead) {
         val propCon = if (target.nullable) "?." else "."
-        val sourceCode = source.read().initialCode
-        val sourceNullable = source.nullable
+        val sourceCode = read.codeWithCast(writer.mapperWriter, type)
+        val sourceNullable = read.nullable
+
         val sourceCon = if (sourceNullable) "?." else "."
 
         val safeSet = nullable || (!nullable && !sourceNullable)
@@ -48,13 +50,17 @@ internal data class MapTargetPropertyImpl(
                         add(propCon)
                         add("%L(", name)
                         add(sourceCode)
-                        add(")")
+                        add(")\n")
                     }.build()
                 } else {
                     CodeBlock.builder()
                         .apply {
+                            add("(")
                             add(sourceCode)
-                            add("${sourceCon}also { %L${propCon}%L(it) }", target.name, name)
+                            add(")")
+                            beginControlFlow("${sourceCon}also")
+                            addStatement("%L${propCon}%L(it)", target.name, name)
+                            endControlFlow()
                         }.build()
                 }
             }
@@ -63,16 +69,22 @@ internal data class MapTargetPropertyImpl(
                 if (safeSet) {
                     CodeBlock.builder().apply {
                         // %L?.%L = code
+                        add("«")
                         add("%L", target.name)
                         add(propCon)
                         add("%L = ", name)
                         add(sourceCode)
+                        add("\n»")
                     }.build()
                 } else {
                     CodeBlock.builder()
                         .apply {
+                            add("(")
                             add(sourceCode)
-                            add("${sourceCon}also { %L${propCon}%L = it }", target.name, name)
+                            add(")")
+                            beginControlFlow("${sourceCon}also")
+                            addStatement("%L${propCon}%L = it", target.name, name)
+                            endControlFlow()
                         }.build()
                 }
             }

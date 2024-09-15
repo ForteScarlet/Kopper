@@ -29,7 +29,14 @@ internal data class MapArgs(
     val sourceType: PropertyType,
     val ignore: Boolean,
     val eval: String,
-)
+    /**
+     * The `nullable` for [eval]'s result.
+     */
+    val evalNullable: Boolean = false,
+) {
+    val isEvalValid: Boolean
+        get() = eval.isNotBlank()
+}
 
 /**
  * @see love.forte.kopper.annotation.Map
@@ -41,6 +48,7 @@ internal fun KSAnnotation.resolveToMapArgs(): MapArgs {
     val sourceType: PropertyType = findEnumArg<PropertyType>("sourceType")!!
     val ignore: Boolean = findArg("ignore")!!
     val eval: String = findArg("eval")!!
+    val evalNullable: Boolean = findArg("evalNullable")!!
 
     return MapArgs(
         target = target,
@@ -49,5 +57,6 @@ internal fun KSAnnotation.resolveToMapArgs(): MapArgs {
         sourceType = sourceType,
         ignore = ignore,
         eval = eval,
+        evalNullable = evalNullable,
     )
 }

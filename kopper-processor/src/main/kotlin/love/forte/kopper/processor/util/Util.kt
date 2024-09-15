@@ -18,6 +18,7 @@ package love.forte.kopper.processor.util
 
 import com.google.devtools.ksp.symbol.*
 import love.forte.kopper.annotation.PropertyType
+import java.util.logging.Logger
 
 internal const val EVAL: String = "eval"
 
@@ -60,32 +61,14 @@ internal inline fun <T> findPropProperty(name: String, type: KSType, block: (KSP
         ?.let(block)
 }
 
-internal inline fun <T> findPropOrConstructorProperty(
-    name: String,
-    type: KSType,
-    onParameter: (KSValueParameter) -> T?,
-    onProperty: (KSPropertyDeclaration) -> T?
-): T? {
-    val classDecl = type.declaration.asClassDeclaration() ?: return null
-    classDecl.primaryConstructor?.parameters?.firstOrNull { ksValueParameter ->
-        ksValueParameter.name?.asString() == name
-    }?.also {
-        return onParameter(it)
-    }
-
-    return findPropProperty(name, type, onProperty)
-}
-
 internal inline fun <T> findFunProperty(name: String, type: KSType, block: (KSFunctionDeclaration) -> T?): T? {
     return type.declaration.asClassDeclaration()
         ?.getAllFunctions()
-        // 没有参数，有返回值，返回值是 type
-        ?.firstOrNull {
-            if (it.simpleName.asString() != name) return@firstOrNull false
-            if (it.parameters.isEmpty()) return@firstOrNull false
-            val returnType = it.returnType ?: return@firstOrNull false
-            returnType.resolve() == type
-        }
+        // 没有参数，有返回值
+        ?.filter { it.simpleName.asString() == name }
+        ?.filter { it.parameters.isEmpty() }
+        ?.filter { it.returnType != null }
+        ?.firstOrNull()
         ?.let(block)
 }
 

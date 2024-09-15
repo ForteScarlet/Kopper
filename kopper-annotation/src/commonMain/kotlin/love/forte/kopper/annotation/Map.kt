@@ -43,7 +43,11 @@ public annotation class Map(
     val sourceName: String = MAIN_SOURCE,
     val sourceType: PropertyType = PropertyType.AUTO,
     val ignore: Boolean = false,
-    val eval: String = ""
+    val eval: String = "",
+    /**
+     * The `nullable` for [eval]'s result.
+     */
+    val evalNullable: Boolean = false,
 ) {
 
     /**
