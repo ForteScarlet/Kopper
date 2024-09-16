@@ -138,7 +138,9 @@ internal fun KSFunctionDeclaration.resolveToMapSet(
 }
 
 internal fun resolveOriginFiles(sourceFun: KSFunctionDeclaration, originFiles: MutableList<KSFile>) {
-    fun KSNode.doAdd() { containingFile?.also(originFiles::add) }
+    fun KSNode.doAdd() {
+        containingFile?.also(originFiles::add)
+    }
 
     sourceFun.extensionReceiver?.doAdd()
     sourceFun.parameters.forEach { it.doAdd() }
@@ -183,7 +185,8 @@ internal fun MapperMapSet.resourceTargets(
     val targetMap = targetClassDeclaration.getAllProperties()
         .associateTo(mutableMapOf()) { property ->
             val name = property.simpleName.asString()
-            val path = if (prefixPath == null) name.toPropertyPath() else prefixPath + name.toPropertyPath() // "$prefixPath.$name"
+            val path =
+                if (prefixPath == null) name.toPropertyPath() else prefixPath + name.toPropertyPath() // "$prefixPath.$name"
 
             val targetArg = targetArgs.remove(path.paths)
 
@@ -296,51 +299,67 @@ internal fun MapperMapSet.resolveMaps() {
         val property: MapSourceProperty,
     )
 
-    val firstLevelTargets = target.targetSourceMap.entries.groupBy(
-        keySelector = { it.key.name },
-        valueTransform = { PathPropertyEntry(it.key, it.value) },
-    )
+    val topLevelTargets = mutableMapOf<String, PathPropertyEntry>()
+    // Key is the root path name.
+    val childExistsTargets = mutableMapOf<String, MutableList<PathPropertyEntry>>()
 
     // 区分：根属性、只有一个但是包含子元素的和带有多个子元素的
-
-    for ((target, entryList) in firstLevelTargets) {
-        // 只有一个元素，
-        if (entryList.size == 1) {
-            val (path, property) = entryList.first()
-            // 没有 child，说明指定的就是一个根属性
-            if (path.child == null) {
-                // ignore, eval
-                val mapArgs = mapArgs.find { it.target == path.paths }
-                if (mapArgs?.ignore == true) {
-                    environment.logger.info("Target $target in $this is ignore.")
-                }
-
-                val targetProperty = this.target.property(path.name)
-                    ?: error("unknown target $target from ${this.target}")
-
-                val map = if (mapArgs?.isEvalValid == true) {
-                    val eval = mapArgs.eval
-                    val evalNullable = mapArgs.evalNullable
-
-                    EvalMapperMap(
-                        eval = eval,
-                        evalNullable = evalNullable,
-                        target = this.target,
-                        targetProperty = targetProperty
-                    )
-                } else {
-                    PropertyMapperMap(
-                        source = property.source,
-                        sourceProperty = property,
-                        target = this.target,
-                        targetProperty = targetProperty
-                    )
-                }
-
-                this.maps.add(map)
+    target.targetSourceMap.forEach { (path, property) ->
+        val rootName = path.name
+        if (!path.hasChild()) {
+            if (rootName !in childExistsTargets) {
+                topLevelTargets[rootName] = PathPropertyEntry(path, property)
             }
+        } else {
+            childExistsTargets.computeIfAbsent(rootName) { mutableListOf() }
+                .add(PathPropertyEntry(path, property))
 
+            // 不再在top-level中
+            topLevelTargets.remove(rootName)
         }
-
     }
+
+    // 处理顶层、只有一个元素的。
+    for ((target, entry) in topLevelTargets) {
+        val (path, property) = entry
+        resolveSingleTopTarget(target, path, property)
+    }
+
+    // TODO 处理多层级目标
+
+}
+
+private fun MapperMapSet.resolveSingleTopTarget(
+    target: String,
+    path: PropertyPath,
+    property: MapSourceProperty
+) {
+    // ignore, eval, etc.
+    val mapArgs = mapArgs.find { it.target == target } // single target.
+    if (mapArgs?.ignore == true) {
+        environment.logger.info("Target $target in $this is ignore.")
+    }
+
+    val targetProperty = this.target.property(path.name)
+        ?: error("unknown target $target from ${this.target}")
+
+    val map = if (mapArgs?.isEvalValid == true) {
+        val eval = mapArgs.eval
+        val evalNullable = mapArgs.evalNullable
+        EvalPropertyMapperMap(
+            eval = eval,
+            evalNullable = evalNullable,
+            target = this.target,
+            targetProperty = targetProperty
+        )
+    } else {
+        SourcePropertyMapperMap(
+            source = property.source,
+            sourceProperty = property,
+            target = this.target,
+            targetProperty = targetProperty
+        )
+    }
+
+    this.maps.add(map)
 }

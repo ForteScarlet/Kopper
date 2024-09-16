@@ -17,8 +17,45 @@
 package love.forte.kopper.processor.mapper
 
 import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.Nullability
 import com.squareup.kotlinpoet.CodeBlock
 import love.forte.kopper.annotation.PropertyType
+
+/**
+ * A property for mapping target.
+ */
+internal interface MapTargetProperty {
+    val target: MapTarget
+
+    /**
+     * Name of target property.
+     */
+    val name: String
+
+    /**
+     * The [MapTargetProperty]'s [PropertyType].
+     * - If it is a property, it must have a `var` property or a constructor property.
+     * - If it is a function, it must have only one parameter, e.g. `fun prop(value: AType)`.
+     *   The `set` prefix is disregarded and its name can be specified manually and directly.
+     */
+    val propertyType: PropertyType
+
+    /**
+     * Type of this property.
+     */
+    val type: KSType
+
+    /**
+     * Kotlin's nullable or Java's platform type.
+     */
+    val nullable: Boolean
+        get() = type.nullability != Nullability.NOT_NULL
+
+    /**
+     * emit a property setter with [read] into [writer]
+     */
+    fun emit(writer: MapperMapSetWriter, read: PropertyRead)
+}
 
 
 internal data class MapTargetPropertyImpl(

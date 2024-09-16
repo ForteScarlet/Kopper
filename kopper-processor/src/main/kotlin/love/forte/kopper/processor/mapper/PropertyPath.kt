@@ -40,6 +40,8 @@ internal data class PropertyPath(
     }
 }
 
+internal fun PropertyPath.hasChild(): Boolean = child != null
+
 internal fun PropertyPath.appendEnd(end: PropertyPath): PropertyPath {
     if (child == null) {
         return copy(child = end)

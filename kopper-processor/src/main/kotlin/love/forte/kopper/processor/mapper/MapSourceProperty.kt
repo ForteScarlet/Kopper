@@ -17,8 +17,62 @@
 package love.forte.kopper.processor.mapper
 
 import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.Nullability
 import com.squareup.kotlinpoet.CodeBlock
 import love.forte.kopper.annotation.PropertyType
+
+/**
+ * A property for mapping source.
+ */
+internal interface MapSourceProperty {
+    val source: MapSource
+
+    /**
+     * Name of source property.
+     */
+    val name: String
+
+    /**
+     * The [MapSourceProperty]'s [PropertyType].
+     * - If it is a function, it must have no parameters and have a return value, e.g. `fun prop(): AType`.
+     *   The `get` prefix is disregarded and its name can be specified manually and directly.
+     */
+    val propertyType: PropertyType
+
+    /**
+     * Kotlin's nullable or Java's platform type.
+     */
+    val nullable: Boolean
+
+    /**
+     * Read this property's value.
+     * @return An expression that can be stored by a local variable,
+     * the type of the expression is type
+     */
+    fun read(): PropertyRead
+}
+
+internal interface MapSourceTypedProperty : MapSourceProperty {
+    val type: KSType
+    override val nullable: Boolean
+        get() = type.nullability != Nullability.NOT_NULL
+}
+
+
+internal data class PropertyRead(
+    val name: String,
+    val code: CodeBlock,
+    val nullable: Boolean,
+    val type: KSType? = null,
+)
+
+internal fun PropertyRead.codeWithCast(writer: MapperWriter, target: KSType): CodeBlock {
+    return if (type != null) {
+        writer.tryTypeCast(code, nullable, type, target)
+    } else {
+        code
+    }
+}
 
 
 internal data class DirectMapSourceProperty(
@@ -110,5 +164,3 @@ internal class EvalSourceProperty(
         )
     }
 }
-
-

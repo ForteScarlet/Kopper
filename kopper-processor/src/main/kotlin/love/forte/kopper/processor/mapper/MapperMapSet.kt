@@ -56,13 +56,28 @@ internal class MapperMapSet internal constructor(
 
         val setWriter = writer.newMapSetWriter(funBuilder)
 
-        // init target.
-        target.emitInit(setWriter)
 
-        // emit maps
-        for ((index, map) in maps.withIndex()) {
-            map.emit(setWriter, index)
+        // init target and emit maps.
+        // target.emitInit(setWriter)
+        target.emitInitBegin(setWriter)
+        var finished = false
+
+        maps.sortedByDescending { it is ConstructorMapperMap }
+            .forEachIndexed { index, map ->
+                if (!finished && map !is ConstructorMapperMap) {
+                    target.emitInitFinish(setWriter)
+                    finished = true
+                }
+                map.emit(setWriter, index)
+            }
+
+        if (!finished) {
+            target.emitInitFinish(setWriter)
         }
+
+        // for ((index, map) in maps.withIndex()) {
+        //     map.emit(setWriter, index)
+        // }
 
         // do return
         if (sourceFun.returnType != null && sourceFun.returnType?.resolve() != resolver.builtIns.unitType) {
