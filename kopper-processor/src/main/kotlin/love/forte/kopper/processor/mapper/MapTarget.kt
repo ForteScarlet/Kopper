@@ -31,7 +31,7 @@ internal sealed class MapTarget(
     val name: String,
     val type: KSType,
 ) {
-    val targetSourceMap: MutableMap<PropertyPath, MapSourceProperty> = mutableMapOf()
+    val targetSourceMap: MutableMap<Path, MapSourceProperty> = mutableMapOf()
 
     /**
      * Kotlin's nullable or Java's platform type.
@@ -68,7 +68,7 @@ internal sealed class MapTarget(
         internal fun create(
             mapSet: MapperMapSet,
             type: KSType,
-            targetSourceMap: MutableMap<PropertyPath, MapSourceProperty>,
+            targetSourceMap: MutableMap<Path, MapSourceProperty>,
         ): MapTarget {
             val name = "__target"
 
@@ -96,7 +96,7 @@ internal sealed class MapTarget(
                     it.target == pname
                 }
 
-                val sourceProperty = targetSourceMap.remove(pname.toPropertyPath())
+                val sourceProperty = targetSourceMap.remove(pname.toPath())
 
                 if (args?.isEvalValid == true) {
                     val eval = args.eval

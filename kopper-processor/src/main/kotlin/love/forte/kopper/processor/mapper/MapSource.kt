@@ -39,18 +39,18 @@ internal data class MapSource(
     val nullable: Boolean
         get() = type.nullability != Nullability.NOT_NULL
 
-    private val properties: MutableMap<PropertyPath, MapSourceTypedProperty> = mutableMapOf()
+    private val properties: MutableMap<Path, MapSourceTypedProperty> = mutableMapOf()
     private val subSources: MutableMap<String, MapSource> = mutableMapOf()
 
     fun property(
-        path: PropertyPath,
+        path: Path,
         propertyType: PropertyType
     ): MapSourceTypedProperty? = property(null, path, path, propertyType)
 
     private fun property(
         parentProperty: MapSourceProperty? = null,
-        fullPath: PropertyPath,
-        path: PropertyPath,
+        fullPath: Path,
+        path: Path,
         propertyType: PropertyType
     ): MapSourceTypedProperty? {
         if (path.child == null) {
@@ -106,7 +106,7 @@ private fun propertyDirect0(
     from: KSType,
     name: String,
     propertyType: PropertyType,
-    properties: MutableMap<PropertyPath, MapSourceTypedProperty>,
+    properties: MutableMap<Path, MapSourceTypedProperty>,
 ): MapSourceTypedProperty? = property0(
     from = from,
     name = name,
@@ -136,7 +136,7 @@ private fun propertyDeep0(
     from: KSType,
     name: String,
     propertyType: PropertyType,
-    properties: MutableMap<PropertyPath, MapSourceTypedProperty>,
+    properties: MutableMap<Path, MapSourceTypedProperty>,
 ): MapSourceTypedProperty? = property0(
     from = from,
     name = name,
@@ -166,11 +166,11 @@ private inline fun property0(
     from: KSType,
     name: String,
     propertyType: PropertyType,
-    properties: MutableMap<PropertyPath, MapSourceTypedProperty>,
+    properties: MutableMap<Path, MapSourceTypedProperty>,
     onProperty: (KSPropertyDeclaration) -> MapSourceTypedProperty?,
     onFunction: (KSFunctionDeclaration) -> MapSourceTypedProperty?
 ): MapSourceTypedProperty? {
-    val key = name.toPropertyPath()
+    val key = name.toPath()
     var find = properties[key]
     if (find == null) {
         find = findProperty(

@@ -21,10 +21,9 @@ package love.forte.kopper.processor.mapper
  *
  * @author ForteScarlet
  */
-internal data class PropertyPath(
-    val root: Boolean,
+internal data class Path(
     val name: String,
-    val child: PropertyPath?,
+    val child: Path?,
 ) {
     val paths: String
         get() = buildString {
@@ -40,9 +39,9 @@ internal data class PropertyPath(
     }
 }
 
-internal fun PropertyPath.hasChild(): Boolean = child != null
+internal fun Path.hasChild(): Boolean = child != null
 
-internal fun PropertyPath.appendEnd(end: PropertyPath): PropertyPath {
+internal fun Path.appendEnd(end: Path): Path {
     if (child == null) {
         return copy(child = end)
     }
@@ -50,32 +49,25 @@ internal fun PropertyPath.appendEnd(end: PropertyPath): PropertyPath {
     return copy(child = child.appendEnd(end))
 }
 
-internal operator fun PropertyPath.plus(childPath: PropertyPath): PropertyPath {
+internal operator fun Path.plus(childPath: Path): Path {
     return copy(
-        root = true,
-        child = child?.appendEnd(childPath.copy(root = false))
-            ?: childPath.copy(root = false)
+        child = child?.appendEnd(childPath)
+            ?: childPath
     )
 }
 
-
-internal fun String.toPropertyPath(root: Boolean = true): PropertyPath {
+internal fun String.toPath(): Path {
     val pointIndex = indexOf('.')
     if (pointIndex < 0) {
         // The end or the root
-        return PropertyPath(
-            root = root,
-            name = this,
-            child = null
-        )
+        return Path(name = this, child = null)
     }
 
     val currentPathName = substring(0, pointIndex)
     val subPaths = substring(pointIndex + 1, length)
 
-    return PropertyPath(
-        root = true,
+    return Path(
         name = currentPathName,
-        child = subPaths.toPropertyPath(false)
+        child = subPaths.toPath()
     )
 }

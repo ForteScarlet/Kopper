@@ -157,7 +157,7 @@ internal fun resolveOriginFiles(sourceFun: KSFunctionDeclaration, originFiles: M
 internal fun MapperMapSet.resourceTargets(
     sourceFun: KSFunctionDeclaration,
     mapTargetType: KSClassDeclaration,
-    prefixPath: PropertyPath? = null,
+    prefixPath: Path? = null,
     targetArgs: MutableMap<String, MapArgs>,
 ) {
     var receiver: KSType? = null
@@ -187,7 +187,7 @@ internal fun MapperMapSet.resourceTargets(
         .associateTo(mutableMapOf()) { property ->
             val name = property.simpleName.asString()
             val path =
-                if (prefixPath == null) name.toPropertyPath() else prefixPath + name.toPropertyPath() // "$prefixPath.$name"
+                if (prefixPath == null) name.toPath() else prefixPath + name.toPath() // "$prefixPath.$name"
 
             val targetArg = targetArgs[path.paths]
 
@@ -224,7 +224,7 @@ internal fun MapperMapSet.resourceTargets(
                         //  伪装结构化 property，或者说构建一个基于内部 MapperMapSet 的 property
                     }
 
-                    targetSource.property(targetArg.source.toPropertyPath(), targetArg.sourceType)
+                    targetSource.property(targetArg.source.toPath(), targetArg.sourceType)
                         ?: error("Source property ${targetArg.source} for target property [$path] is not found.")
                 }
             } else {
@@ -239,7 +239,7 @@ internal fun MapperMapSet.resourceTargets(
                 } ?: error("Source property for target property [$path] is not found.")
             }
 
-            name.toPropertyPath() to targetSourceProperty
+            name.toPath() to targetSourceProperty
         }
 
     val receiver0 = receiver
@@ -318,7 +318,7 @@ internal fun MapperMapSet.resolveSources(
  */
 internal fun MapperMapSet.resolveMaps() {
     data class PathPropertyEntry(
-        val path: PropertyPath,
+        val path: Path,
         val property: MapSourceProperty,
     )
 
@@ -354,7 +354,7 @@ internal fun MapperMapSet.resolveMaps() {
 
 private fun MapperMapSet.resolveSingleTopTarget(
     target: String,
-    path: PropertyPath,
+    path: Path,
     property: MapSourceProperty
 ) {
     // ignore, eval, etc.
