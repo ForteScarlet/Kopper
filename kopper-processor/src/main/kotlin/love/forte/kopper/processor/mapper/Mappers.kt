@@ -114,29 +114,52 @@ internal fun KSFunctionDeclaration.resolveToMapSet(
         mapArgs = mapArgList,
     )
 
-    // resolve targets
-    val mapTargetType = resolver.getClassDeclarationByName<Map.Target>()
-        ?: error("Cannot find Map.Target annotation declaration.")
-
-    mapSet.resolveSources(this, mapTargetType)
-
-    val targetArgs = mapSet.mapArgs.associateByTo(mutableMapOf()) { it.target }
-
-    mapSet.resourceTargets(
-        sourceFun = this,
-        mapTargetType = mapTargetType,
-        prefixPath = null,
-        targetArgs = targetArgs,
-    )
-
-    // resolve maps
-    mapSet.resolveMaps()
+    mapSet.initial()
 
     // resolve originFiles
     resolveOriginFiles(this, originFiles)
 
     return mapSet
 }
+
+
+internal fun resolveMapSet(
+    environment: SymbolProcessorEnvironment,
+    resolver: Resolver,
+    mapArgList: List<MapArgs>,
+    func: MapperMapSetFunInfo,
+): MapperMapSet {
+    val mapSet = MapperMapSet(
+        environment = environment,
+        resolver = resolver,
+        func = func,
+        mapArgs = mapArgList,
+    )
+
+    mapSet.initial()
+
+    return mapSet
+}
+
+internal fun MapperMapSet.initial() {
+    // resolve targets
+    val mapTargetAnnoType = resolver.getClassDeclarationByName<Map.Target>()
+        ?: error("Cannot find Map.Target annotation declaration.")
+
+    resolveSources(mapTargetAnnoType)
+
+    val targetArgs = mapArgs.associateByTo(mutableMapOf()) { it.target }
+
+    resourceTargets(
+        mapTargetAnnoType = mapTargetAnnoType,
+        prefixPath = null,
+        targetArgs = targetArgs,
+    )
+
+    // resolve maps
+    resolveMaps()
+}
+
 
 internal fun resolveOriginFiles(sourceFun: KSFunctionDeclaration, originFiles: MutableList<KSFile>) {
     fun KSNode.doAdd() {
@@ -155,26 +178,24 @@ internal fun resolveOriginFiles(sourceFun: KSFunctionDeclaration, originFiles: M
  *
  */
 internal fun MapperMapSet.resourceTargets(
-    sourceFun: KSFunctionDeclaration,
-    mapTargetType: KSClassDeclaration,
+    mapTargetAnnoType: KSClassDeclaration,
     prefixPath: Path? = null,
     targetArgs: MutableMap<String, MapArgs>,
 ) {
     var receiver: KSType? = null
-    var parameter: KSValueParameter? = null
+    var parameter: MapperMapSetFunParameter? = null
 
     val targetType: KSType =
-        sourceFun.extensionReceiver
-            ?.takeIf { it.hasAnno(mapTargetType.asStarProjectedType()) }
-            ?.resolve()
+        func.receiver
+            ?.takeIf { it.hasAnno(mapTargetAnnoType.asStarProjectedType()) }
             ?.also { receiver = it }
-            ?: sourceFun.parameters
+            ?: func.parameters
                 .firstOrNull {
-                    it.hasAnno(mapTargetType.asStarProjectedType())
+                    it.type.hasAnno(mapTargetAnnoType.asStarProjectedType())
                 }
                 ?.also { parameter = it }
-                ?.type?.resolve()
-            ?: sourceFun.returnType?.resolve()
+                ?.type
+            ?: func.returns
             ?: error("No target type found")
 
     val targetClassDeclaration =
@@ -183,64 +204,82 @@ internal fun MapperMapSet.resourceTargets(
 
     this.targetClassDeclaration = targetClassDeclaration
 
-    val targetMap = targetClassDeclaration.getAllProperties()
-        .associateTo(mutableMapOf()) { property ->
-            val name = property.simpleName.asString()
-            val path =
-                if (prefixPath == null) name.toPath() else prefixPath + name.toPath() // "$prefixPath.$name"
+    val targetMap = mutableMapOf<Path, MapSourceProperty>()
 
-            val targetArg = targetArgs[path.paths]
+    for (property in targetClassDeclaration.getAllProperties()) {
+        val name = property.simpleName.asString()
+        val path =
+            if (prefixPath == null) name.toPath() else prefixPath + name.toPath() // "$prefixPath.$name"
 
-            // TODO target source property,
-            //  如果目标是某个结构化对象，
-            //  使用一个伪装的 fun 包装此 property
+        val targetArg = targetArgs[path.paths]
 
-            val isMappableStructType = property.type
-                .resolve()
-                .declaration
-                .isMappableStructType(resolver.builtIns)
+        // TODO target source property,
+        //  如果目标是某个结构化对象，
+        //  使用一个伪装的 fun 包装此 property
 
-            // 是结构化目标，且没有eval，
+        val isMappableStructType = property.type
+            .resolve()
+            .declaration
+            .isMappableStructType(resolver.builtIns)
 
-            val targetSourceProperty: MapSourceProperty = if (targetArg != null) {
-                // 有明確指定的 @Map 目标，用 arg.source
-                val argSourceName = targetArg.sourceName
-                val targetSource =
-                    if (argSourceName.isEmpty()) sources.first { it.isMain }
-                    else sources.first { it.name == argSourceName }
+        // 是结构化目标，且没有eval，
 
-                // 如果eval有效, 构建 eval property
-                if (targetArg.isEvalValid) {
-                    EvalSourceProperty(
-                        name = "${name}_eval",
-                        source = this.sources.first { it.isMain },
-                        nullable = targetArg.evalNullable,
-                        eval = targetArg.eval,
-                    )
-                } else {
+        val targetSourceProperty: MapSourceProperty = if (targetArg != null) {
+            // 有明確指定的 @Map 目标，用 arg.source
+            val argSourceName = targetArg.sourceName
+            val targetSource =
+                if (argSourceName.isEmpty()) sources.first { it.isMain }
+                else sources.first { it.name == argSourceName }
 
-                    if (isMappableStructType) {
-                        // TODO 是结构化的
-                        //  伪装结构化 property，或者说构建一个基于内部 MapperMapSet 的 property
-                    }
-
-                    targetSource.property(targetArg.source.toPath(), targetArg.sourceType)
-                        ?: error("Source property ${targetArg.source} for target property [$path] is not found.")
-                }
+            // 如果eval有效, 构建 eval property
+            if (targetArg.isEvalValid) {
+                EvalSourceProperty(
+                    name = "${name}_eval",
+                    source = this.sources.first { it.isMain },
+                    nullable = targetArg.evalNullable,
+                    eval = targetArg.eval,
+                )
             } else {
                 if (isMappableStructType) {
                     // TODO 是结构化的
                     //  伪装结构化 property，或者说构建一个基于内部 MapperMapSet 的 property
+
+                    val internalMapSet = resolveMapSet(
+                        environment = environment,
+                        resolver = resolver,
+                        mapArgList = emptyList(), // TODO 从 targetArgs 中寻找前缀
+                        func = MapperMapSetFunInfo(
+                            name = "resolve" +
+                                targetClassDeclaration.simpleName.asString().replaceFirstChar { it.uppercase() } +
+                                name.replaceFirstChar { it.uppercase() } +
+                                "For_" + func.name,
+                            receiver = null, // TODO 不用 receiver 的形式
+                            parameters = listOf(), // TODO 寻找所有所需的 sources. 是不是需要判断 target 已经存在与否?
+                            returns = property.type.resolve(),
+                        )
+                    )
+
+                    // TODO
                 }
 
-                // 没有，去 source 找同名同路径的
-                sources.sortedByDescending { it.isMain }.firstNotNullOfOrNull { mapSource ->
-                    mapSource.property(path, PropertyType.AUTO)
-                } ?: error("Source property for target property [$path] is not found.")
+                targetSource.property(targetArg.source.toPath(), targetArg.sourceType)
+                    ?: error("Source property ${targetArg.source} for target property [$path] is not found.")
+            }
+        } else {
+            if (isMappableStructType) {
+                // TODO 是结构化的
+                //  伪装结构化 property，或者说构建一个基于内部 MapperMapSet 的 property
             }
 
-            name.toPath() to targetSourceProperty
+            // 没有，去 source 找同名同路径的
+            sources.sortedByDescending { it.isMain }.firstNotNullOfOrNull { mapSource ->
+                mapSource.property(path, PropertyType.AUTO)
+            } ?: error("Source property for target property [$path] is not found.")
         }
+
+        targetMap[name.toPath()] = targetSourceProperty
+    }
+
 
     val receiver0 = receiver
     val parameter0 = parameter
@@ -257,14 +296,14 @@ internal fun MapperMapSet.resourceTargets(
         parameter0 != null -> {
             MapTarget.create(
                 mapSet = this,
-                parameter = parameter0,
-                type = parameter0.type.resolve()
+                parameterName = parameter0.name!!,
+                type = parameter0.type
             )
         }
 
         else -> {
             // return type
-            val returnType = sourceFun.returnType!!.resolve()
+            val returnType = func.returns!!
             MapTarget.create(
                 mapSet = this,
                 type = returnType,
@@ -278,14 +317,12 @@ internal fun MapperMapSet.resourceTargets(
 }
 
 internal fun MapperMapSet.resolveSources(
-    sourceFun: KSFunctionDeclaration,
     mapTargetType: KSClassDeclaration,
 ) {
     // 整理所有的 MapSource, 通过 receiver 或 parameter
-    sourceFun.extensionReceiver
+    func.receiver
         // not target
         ?.takeUnless { it.hasAnno(mapTargetType.asStarProjectedType()) }
-        ?.resolve()
         ?.also {
             sources.add(
                 MapSource(
@@ -296,14 +333,14 @@ internal fun MapperMapSet.resolveSources(
             )
         }
 
-    for (parameter in sourceFun.parameters) {
+    for (parameter in func.parameters) {
         // not target
-        if (!parameter.hasAnno(mapTargetType.asStarProjectedType())) {
+        if (!parameter.type.hasAnno(mapTargetType.asStarProjectedType())) {
             sources.add(
                 MapSource(
                     sourceMapSet = this,
-                    name = parameter.name?.asString() ?: "?ERROR",
-                    type = parameter.type.resolve()
+                    name = parameter.name ?: "?ERROR",
+                    type = parameter.type
                 )
             )
         }

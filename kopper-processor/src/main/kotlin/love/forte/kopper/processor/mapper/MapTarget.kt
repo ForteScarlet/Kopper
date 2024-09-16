@@ -134,15 +134,12 @@ internal sealed class MapTarget(
          */
         internal fun create(
             mapSet: MapperMapSet,
-            parameter: KSValueParameter,
+            parameterName: String,
             type: KSType,
         ): MapTarget {
-            val name = parameter.name!!.asString()
-
             return IncludedParameterMapTarget(
                 mapSet = mapSet,
-                parameter = parameter,
-                name = name,
+                name = parameterName,
                 type = type,
             )
         }
@@ -166,7 +163,6 @@ internal sealed class MapTarget(
 
 private class IncludedParameterMapTarget(
     mapSet: MapperMapSet,
-    val parameter: KSValueParameter,
     name: String,
     type: KSType,
 ) : MapTarget(mapSet, name, type) {

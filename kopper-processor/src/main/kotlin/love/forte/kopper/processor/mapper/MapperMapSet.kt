@@ -90,7 +90,12 @@ internal class MapperMapSet internal constructor(
     fun emit(writer: MapperWriter) {
         val funName = func.name
         val funBuilder = FunSpec.builder(func.name)
-        funBuilder.addModifiers(KModifier.OVERRIDE)
+        if (sourceFun != null) {
+            funBuilder.addModifiers(KModifier.OVERRIDE)
+        } else {
+            funBuilder.addModifiers(KModifier.PRIVATE)
+        }
+
         // parameters
         func.receiver?.also { funBuilder.receiver(it.toTypeName()) }
         func.parameters.forEach { funBuilder.addParameter(it.name!!, it.type.toTypeName()) }

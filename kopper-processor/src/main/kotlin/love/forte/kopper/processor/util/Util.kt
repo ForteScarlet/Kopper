@@ -106,6 +106,9 @@ internal fun KSAnnotated.hasAnno(targetAnoType: KSType): Boolean =
         }
     }
 
+internal fun KSType.hasAnno(targetAnoType: KSType): Boolean =
+    declaration.hasAnno(targetAnoType)
+
 /**
  * If is [KSClassDeclaration], return it,
  * if is [KSTypeAlias], try again.
