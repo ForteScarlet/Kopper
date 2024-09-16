@@ -14,15 +14,11 @@
  * limitations under the License.
  */
 
-package love.forte.kopper.processor.mapper.impl
+package love.forte.kopper.processor.mapper
 
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.CodeBlock
 import love.forte.kopper.annotation.PropertyType
-import love.forte.kopper.processor.mapper.MapSource
-import love.forte.kopper.processor.mapper.MapSourceProperty
-import love.forte.kopper.processor.mapper.MapSourceTypedProperty
-import love.forte.kopper.processor.mapper.PropertyRead
 
 
 internal data class DirectMapSourceProperty(

@@ -16,6 +16,7 @@
 
 package love.forte.kopper.processor.util
 
+import com.google.devtools.ksp.processing.KSBuiltIns
 import com.google.devtools.ksp.symbol.*
 import love.forte.kopper.annotation.PropertyType
 import java.util.logging.Logger
@@ -116,10 +117,46 @@ internal tailrec fun KSDeclaration.asClassDeclaration(): KSClassDeclaration? {
     return type.resolve().declaration.asClassDeclaration()
 }
 
-internal fun KSType.isMappableStructType(): Boolean {
-    return when (this.declaration) {
-        is KSClassDeclaration -> true
-        is KSTypeAlias -> true
+
+private const val KT_NUMBER_PACKAGE = "kotlin"
+private const val U_BYTE_NAME = "UByte"
+private const val U_SHORT_NAME = "UShort"
+private const val U_INT_NAME = "UInt"
+private const val U_LONG_NAME = "ULong"
+
+private fun KSDeclaration.isUByte(): Boolean = 
+    packageName.asString() == KT_NUMBER_PACKAGE && simpleName.asString() == U_BYTE_NAME
+
+private fun KSDeclaration.isUShort(): Boolean =
+    packageName.asString() == KT_NUMBER_PACKAGE && simpleName.asString() == U_SHORT_NAME
+
+private fun KSDeclaration.isUInt(): Boolean =
+    packageName.asString() == KT_NUMBER_PACKAGE && simpleName.asString() == U_INT_NAME
+
+private fun KSDeclaration.isULong(): Boolean =
+    packageName.asString() == KT_NUMBER_PACKAGE && simpleName.asString() == U_LONG_NAME
+
+internal fun KSDeclaration.isMappableStructType(builtIns: KSBuiltIns): Boolean {
+    return when {
+        this == builtIns.numberType.declaration -> false
+        this == builtIns.byteType.declaration -> false
+        this == builtIns.shortType.declaration -> false
+        this == builtIns.intType.declaration -> false
+        this == builtIns.longType.declaration -> false
+        this == builtIns.floatType.declaration -> false
+        this == builtIns.doubleType.declaration -> false
+        this == builtIns.charType.declaration -> false
+        this == builtIns.booleanType.declaration -> false
+        this == builtIns.stringType.declaration -> false
+        // is number, for UXxx
+        isUByte() || isUShort() || isUInt() || isULong() -> false
+
+        // 更多检测?
+        this is KSClassDeclaration -> true
+        this is KSTypeAlias -> asClassDeclaration()?.isMappableStructType(builtIns) ?: false
         else -> false
     }
 }
+
+internal fun KSDeclaration.isDirectMappableType(builtIns: KSBuiltIns): Boolean =
+    !isMappableStructType(builtIns)

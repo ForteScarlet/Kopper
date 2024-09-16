@@ -23,9 +23,6 @@ import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.withIndent
 import love.forte.kopper.annotation.PropertyType
-import love.forte.kopper.processor.mapper.impl.DeepPathMapSourceProperty
-import love.forte.kopper.processor.mapper.impl.DirectMapSourceProperty
-import love.forte.kopper.processor.mapper.impl.MapTargetPropertyImpl
 import love.forte.kopper.processor.util.findPropProperty
 import love.forte.kopper.processor.util.findProperty
 
@@ -44,38 +41,38 @@ internal data class MapSource(
     val nullable: Boolean
         get() = type.nullability != Nullability.NOT_NULL
 
-    private val properties: MutableMap<String, MapSourceTypedProperty> = mutableMapOf()
+    private val properties: MutableMap<PropertyPath, MapSourceTypedProperty> = mutableMapOf()
     private val subSources: MutableMap<String, MapSource> = mutableMapOf()
 
     fun property(
-        path: String,
+        path: PropertyPath,
         propertyType: PropertyType
     ): MapSourceTypedProperty? = property(null, path, path, propertyType)
 
     private fun property(
         parentProperty: MapSourceProperty? = null,
-        fullPath: String,
-        path: String,
+        fullPath: PropertyPath,
+        path: PropertyPath,
         propertyType: PropertyType
     ): MapSourceTypedProperty? {
-        if ('.' !in path) {
+        if (path.child == null) {
             return if (parentProperty != null) {
                 logger.info("has parent prop(${parentProperty}) for path $path")
                 if (fullPath != path) {
-                    propertyDeep0(this, parentProperty, type, path, propertyType, properties)
+                    propertyDeep0(this, parentProperty, type, path.name, propertyType, properties)
                 } else {
-                    propertyDeep0(this, parentProperty, type, path, PropertyType.AUTO, properties)
+                    propertyDeep0(this, parentProperty, type, path.name, PropertyType.AUTO, properties)
                 }
             } else {
                 if (fullPath != path) {
-                    propertyDirect0(this, type, path, propertyType, properties)
+                    propertyDirect0(this, type, path.name, propertyType, properties)
                 } else {
-                    propertyDirect0(this, type, path, PropertyType.AUTO, properties)
+                    propertyDirect0(this, type, path.name, PropertyType.AUTO, properties)
                 }
             }
         }
 
-        val name = path.substringBefore('.')
+        val name = path.name
 
         val currentProperty = if (parentProperty == null) {
             propertyDirect0(this, type, name, PropertyType.AUTO, properties)
@@ -83,7 +80,7 @@ internal data class MapSource(
             propertyDeep0(this, parentProperty, type, name, PropertyType.AUTO, properties)
         } ?: return null
 
-        val subPath = path.substringAfter('.')
+        val subPath = path.child
 
         val subSource = subSources.computeIfAbsent(
             currentProperty.name
@@ -113,7 +110,7 @@ private fun propertyDirect0(
     from: KSType,
     name: String,
     propertyType: PropertyType,
-    properties: MutableMap<String, MapSourceTypedProperty>,
+    properties: MutableMap<PropertyPath, MapSourceTypedProperty>,
 ): MapSourceTypedProperty? = property0(
     from = from,
     name = name,
@@ -143,7 +140,7 @@ private fun propertyDeep0(
     from: KSType,
     name: String,
     propertyType: PropertyType,
-    properties: MutableMap<String, MapSourceTypedProperty>,
+    properties: MutableMap<PropertyPath, MapSourceTypedProperty>,
 ): MapSourceTypedProperty? = property0(
     from = from,
     name = name,
@@ -173,11 +170,12 @@ private inline fun property0(
     from: KSType,
     name: String,
     propertyType: PropertyType,
-    properties: MutableMap<String, MapSourceTypedProperty>,
+    properties: MutableMap<PropertyPath, MapSourceTypedProperty>,
     onProperty: (KSPropertyDeclaration) -> MapSourceTypedProperty?,
     onFunction: (KSFunctionDeclaration) -> MapSourceTypedProperty?
 ): MapSourceTypedProperty? {
-    var find = properties[name]
+    val key = name.toPropertyPath()
+    var find = properties[key]
     if (find == null) {
         find = findProperty(
             name = name,
@@ -185,7 +183,7 @@ private inline fun property0(
             propertyType = propertyType,
             onProperty = onProperty,
             onFunction = onFunction
-        )?.also { properties[name] = it }
+        )?.also { properties[key] = it }
     }
 
     return find
@@ -250,7 +248,7 @@ internal sealed class MapTarget(
     val name: String,
     val type: KSType,
 ) {
-    val targetSourceMap: MutableMap<String, MapSourceProperty> = mutableMapOf()
+    val targetSourceMap: MutableMap<PropertyPath, MapSourceProperty> = mutableMapOf()
 
     /**
      * Kotlin's nullable or Java's platform type.
@@ -288,7 +286,7 @@ internal sealed class MapTarget(
         internal fun create(
             mapSet: MapperMapSet,
             type: KSType,
-            targetSourceMap: MutableMap<String, MapSourceProperty>,
+            targetSourceMap: MutableMap<PropertyPath, MapSourceProperty>,
         ): MapTarget {
             val name = "__target"
             // TODO check type?
@@ -304,7 +302,7 @@ internal sealed class MapTarget(
                             "Constructor's parameter must be a property or has default value, but $parameter"
                         }
 
-                        val sourceProperty = targetSourceMap.remove(parameter.name!!.asString())
+                        val sourceProperty = targetSourceMap.remove(parameter.name!!.asString().toPropertyPath())
                             ?: error("Source property for parameter ${parameter.name} not found.")
 
                         add(RequiredPair(parameter, sourceProperty))

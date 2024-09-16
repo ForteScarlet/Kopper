@@ -24,7 +24,7 @@ import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.ksp.writeTo
 import love.forte.kopper.processor.mapper.Mapper
-import love.forte.kopper.processor.mapper.impl.resolveToMapper
+import love.forte.kopper.processor.mapper.resolveToMapper
 
 private const val MAPPER_ANNOTATION_NAME = "love.forte.kopper.annotation.Mapper"
 

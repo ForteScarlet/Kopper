@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package love.forte.kopper.processor.mapper.impl
+package love.forte.kopper.processor.mapper
 
 import com.google.devtools.ksp.containingFile
 import com.google.devtools.ksp.getClassDeclarationByName
@@ -23,7 +23,6 @@ import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.*
 import love.forte.kopper.annotation.Map
 import love.forte.kopper.annotation.PropertyType
-import love.forte.kopper.processor.mapper.*
 import love.forte.kopper.processor.util.asClassDeclaration
 import love.forte.kopper.processor.util.hasAnno
 
@@ -125,7 +124,7 @@ internal fun KSFunctionDeclaration.resolveToMapSet(
     mapSet.resourceTargets(
         sourceFun = this,
         mapTargetType = mapTargetType,
-        prefixPath = "",
+        prefixPath = null,
         targetArgs = targetArgs
     )
 
@@ -155,7 +154,7 @@ internal fun resolveOriginFiles(sourceFun: KSFunctionDeclaration, originFiles: M
 internal fun MapperMapSet.resourceTargets(
     sourceFun: KSFunctionDeclaration,
     mapTargetType: KSClassDeclaration,
-    prefixPath: String = "",
+    prefixPath: PropertyPath? = null,
     targetArgs: MutableMap<String, MapArgs>,
 ) {
     var receiver: KSType? = null
@@ -184,9 +183,9 @@ internal fun MapperMapSet.resourceTargets(
     val targetMap = targetClassDeclaration.getAllProperties()
         .associateTo(mutableMapOf()) { property ->
             val name = property.simpleName.asString()
-            val path = if (prefixPath.isEmpty()) name else "$prefixPath.$name"
+            val path = if (prefixPath == null) name.toPropertyPath() else prefixPath + name.toPropertyPath() // "$prefixPath.$name"
 
-            val targetArg = targetArgs.remove(path)
+            val targetArg = targetArgs.remove(path.paths)
 
             val targetSourceProperty: MapSourceProperty = if (targetArg != null) {
                 // 有明確指定的 @Map 目标，用 arg.source
@@ -204,7 +203,7 @@ internal fun MapperMapSet.resourceTargets(
                         eval = targetArg.eval,
                     )
                 } else {
-                    targetSource.property(targetArg.source, targetArg.sourceType)
+                    targetSource.property(targetArg.source.toPropertyPath(), targetArg.sourceType)
                         ?: error("Source property ${targetArg.source} for target property [$path] is not found.")
                 }
             } else {
@@ -214,7 +213,7 @@ internal fun MapperMapSet.resourceTargets(
                 } ?: error("Source property for target property [$path] is not found.")
             }
 
-            name to targetSourceProperty
+            name.toPropertyPath() to targetSourceProperty
         }
 
     val receiver0 = receiver
@@ -292,36 +291,56 @@ internal fun MapperMapSet.resolveSources(
  *
  */
 internal fun MapperMapSet.resolveMaps() {
-    for ((target, property) in target.targetSourceMap) {
-        // ignore, eval
-        val mapArgs = mapArgs.find { it.target == target }
-        if (mapArgs?.ignore == true) {
-            environment.logger.info("Target $target in $this is ignore.")
+    data class PathPropertyEntry(
+        val path: PropertyPath,
+        val property: MapSourceProperty,
+    )
+
+    val firstLevelTargets = target.targetSourceMap.entries.groupBy(
+        keySelector = { it.key.name },
+        valueTransform = { PathPropertyEntry(it.key, it.value) },
+    )
+
+    // 区分：根属性、只有一个但是包含子元素的和带有多个子元素的
+
+    for ((target, entryList) in firstLevelTargets) {
+        // 只有一个元素，
+        if (entryList.size == 1) {
+            val (path, property) = entryList.first()
+            // 没有 child，说明指定的就是一个根属性
+            if (path.child == null) {
+                // ignore, eval
+                val mapArgs = mapArgs.find { it.target == path.paths }
+                if (mapArgs?.ignore == true) {
+                    environment.logger.info("Target $target in $this is ignore.")
+                }
+
+                val targetProperty = this.target.property(path.name)
+                    ?: error("unknown target $target from ${this.target}")
+
+                val map = if (mapArgs?.isEvalValid == true) {
+                    val eval = mapArgs.eval
+                    val evalNullable = mapArgs.evalNullable
+
+                    EvalMapperMap(
+                        eval = eval,
+                        evalNullable = evalNullable,
+                        target = this.target,
+                        targetProperty = targetProperty
+                    )
+                } else {
+                    PropertyMapperMap(
+                        source = property.source,
+                        sourceProperty = property,
+                        target = this.target,
+                        targetProperty = targetProperty
+                    )
+                }
+
+                this.maps.add(map)
+            }
+
         }
 
-
-        val targetProperty = this.target.property(target)
-            ?: error("unknown target $target from ${this.target}")
-
-        val map = if (mapArgs?.isEvalValid == true) {
-            val eval = mapArgs.eval
-            val evalNullable = mapArgs.evalNullable
-
-            EvalMapperMap(
-                eval = eval,
-                evalNullable = evalNullable,
-                target = this.target,
-                targetProperty = targetProperty
-            )
-        } else {
-            PropertyMapperMap(
-                source = property.source,
-                sourceProperty = property,
-                target = this.target,
-                targetProperty = targetProperty
-            )
-        }
-
-        this.maps.add(map)
     }
 }
