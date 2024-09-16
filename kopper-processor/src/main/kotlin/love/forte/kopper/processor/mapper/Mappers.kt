@@ -25,6 +25,7 @@ import love.forte.kopper.annotation.Map
 import love.forte.kopper.annotation.PropertyType
 import love.forte.kopper.processor.util.asClassDeclaration
 import love.forte.kopper.processor.util.hasAnno
+import love.forte.kopper.processor.util.isMappableStructType
 
 internal fun resolveToMapper(
     environment: SymbolProcessorEnvironment,
@@ -125,7 +126,7 @@ internal fun KSFunctionDeclaration.resolveToMapSet(
         sourceFun = this,
         mapTargetType = mapTargetType,
         prefixPath = null,
-        targetArgs = targetArgs
+        targetArgs = targetArgs,
     )
 
     // resolve maps
@@ -188,7 +189,18 @@ internal fun MapperMapSet.resourceTargets(
             val path =
                 if (prefixPath == null) name.toPropertyPath() else prefixPath + name.toPropertyPath() // "$prefixPath.$name"
 
-            val targetArg = targetArgs.remove(path.paths)
+            val targetArg = targetArgs[path.paths]
+
+            // TODO target source property,
+            //  如果目标是某个结构化对象，
+            //  使用一个伪装的 fun 包装此 property
+
+            val isMappableStructType = property.type
+                .resolve()
+                .declaration
+                .isMappableStructType(resolver.builtIns)
+
+            // 是结构化目标，且没有eval，
 
             val targetSourceProperty: MapSourceProperty = if (targetArg != null) {
                 // 有明確指定的 @Map 目标，用 arg.source
@@ -206,10 +218,21 @@ internal fun MapperMapSet.resourceTargets(
                         eval = targetArg.eval,
                     )
                 } else {
+
+                    if (isMappableStructType) {
+                        // TODO 是结构化的
+                        //  伪装结构化 property，或者说构建一个基于内部 MapperMapSet 的 property
+                    }
+
                     targetSource.property(targetArg.source.toPropertyPath(), targetArg.sourceType)
                         ?: error("Source property ${targetArg.source} for target property [$path] is not found.")
                 }
             } else {
+                if (isMappableStructType) {
+                    // TODO 是结构化的
+                    //  伪装结构化 property，或者说构建一个基于内部 MapperMapSet 的 property
+                }
+
                 // 没有，去 source 找同名同路径的
                 sources.sortedByDescending { it.isMain }.firstNotNullOfOrNull { mapSource ->
                     mapSource.property(path, PropertyType.AUTO)
@@ -325,7 +348,7 @@ internal fun MapperMapSet.resolveMaps() {
         resolveSingleTopTarget(target, path, property)
     }
 
-    // TODO 处理多层级目标
+    // TODO 处理多层级目标?
 
 }
 

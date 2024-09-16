@@ -20,9 +20,22 @@ import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ksp.toTypeName
+
+internal data class MapperMapSetFunInfo(
+    val name: String,
+    val receiver: KSType?,
+    val parameters: List<MapperMapSetFunParameter>,
+    val returns: KSType?
+)
+
+internal data class MapperMapSetFunParameter(
+    val name: String?,
+    val type: KSType,
+)
 
 /**
  * A set of `Map`s in a Mapper.
@@ -32,30 +45,59 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 internal class MapperMapSet internal constructor(
     val environment: SymbolProcessorEnvironment,
     val resolver: Resolver,
-    val sourceFun: KSFunctionDeclaration,
+    val func: MapperMapSetFunInfo,
     val mapArgs: List<MapArgs>,
     val sources: MutableList<MapSource> = mutableListOf(),
     val maps: MutableList<MapperMap> = mutableListOf(),
 ) {
+    constructor(
+        environment: SymbolProcessorEnvironment,
+        resolver: Resolver,
+        sourceFun: KSFunctionDeclaration,
+        mapArgs: List<MapArgs>,
+        sources: MutableList<MapSource> = mutableListOf(),
+        maps: MutableList<MapperMap> = mutableListOf(),
+    ) : this(
+        environment = environment,
+        resolver = resolver,
+        func = MapperMapSetFunInfo(
+            name = sourceFun.simpleName.asString(),
+            receiver = sourceFun.extensionReceiver?.resolve(),
+            parameters = sourceFun.parameters.map { p ->
+                MapperMapSetFunParameter(
+                    name = p.name?.asString(),
+                    type = p.type.resolve()
+                )
+            },
+            returns = sourceFun.returnType?.resolve()
+        ),
+        mapArgs = mapArgs,
+        sources = sources,
+        maps = maps,
+    ) {
+        this.sourceFun = sourceFun
+    }
+
     lateinit var targetClassDeclaration: KSClassDeclaration
     lateinit var target: MapTarget
+    var sourceFun: KSFunctionDeclaration? = null
+        private set
 
     val ignoreTargets = mapArgs
         .filter { it.ignore }
         .mapTo(mutableSetOf()) { it.target }
 
     fun emit(writer: MapperWriter) {
-        val funName = sourceFun.simpleName.asString()
-        val funBuilder = FunSpec.builder(sourceFun.simpleName.asString())
+        val funName = func.name
+        val funBuilder = FunSpec.builder(func.name)
         funBuilder.addModifiers(KModifier.OVERRIDE)
         // parameters
-        sourceFun.extensionReceiver?.also { funBuilder.receiver(it.toTypeName()) }
-        sourceFun.parameters.forEach { funBuilder.addParameter(it.name!!.asString(), it.type.toTypeName()) }
+        func.receiver?.also { funBuilder.receiver(it.toTypeName()) }
+        func.parameters.forEach { funBuilder.addParameter(it.name!!, it.type.toTypeName()) }
         // return
-        sourceFun.returnType?.toTypeName()?.also { funBuilder.returns(it) }
+        func.returns?.toTypeName()?.also { funBuilder.returns(it) }
 
         val setWriter = writer.newMapSetWriter(funBuilder)
-
 
         // init target and emit maps.
         // target.emitInit(setWriter)
@@ -75,12 +117,8 @@ internal class MapperMapSet internal constructor(
             target.emitInitFinish(setWriter)
         }
 
-        // for ((index, map) in maps.withIndex()) {
-        //     map.emit(setWriter, index)
-        // }
-
         // do return
-        if (sourceFun.returnType != null && sourceFun.returnType?.resolve() != resolver.builtIns.unitType) {
+        if (func.returns != null && func.returns != resolver.builtIns.unitType) {
             setWriter.addStatement("return %L", target.name)
         }
 

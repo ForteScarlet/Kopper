@@ -16,6 +16,8 @@
 
 package love.forte.kopper.annotation
 
+import kotlin.reflect.KClass
+
 /**
  * A mapper marker.
  */
@@ -30,9 +32,54 @@ public annotation class Mapper(
     val genTargetNameSuffix: String = "Impl",
     val genTargetPackages: Array<String> = [],
 
+    // TODO annotations
+    /**
+     *
+     * ```kotlin
+     * @Mapper(
+     *     annotations = [
+     *         Mapper.Anno(Component::class)
+     *     ]
+     * )
+     * interface MyMapper
+     * ```
+     *
+     * ```kotlin
+     * @Mapper(
+     *     annotations = [
+     *         Mapper.Anno(
+     *             value = Component::class,
+     *             members = [
+     *                 Mapper.AnnoMember(
+     *                     format = "name = %S",
+     *                     args = ["MyMapperName"]
+     *                 )
+     *             ]
+     *         )
+     *     ]
+     * )
+     * interface MyMapper
+     * ```
+     *
+     * @suppress TODO
+     */
+    val annotations: Array<Anno> = [],
+
     // TODO strategy
 
-)
+) {
+    public annotation class Anno(
+        val value: KClass<out Annotation>,
+        val members: Array<AnnoMember> = []
+    )
+
+    public annotation class AnnoMember(
+        val format: String,
+        val args: Array<String> = []
+    )
+
+
+}
 
 public enum class MapperGenTarget {
     /**

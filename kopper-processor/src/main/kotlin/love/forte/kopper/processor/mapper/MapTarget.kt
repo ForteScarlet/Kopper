@@ -16,14 +16,14 @@
 
 package love.forte.kopper.processor.mapper
 
-import com.google.devtools.ksp.getConstructors
-import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.isAbstract
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSValueParameter
 import com.google.devtools.ksp.symbol.Nullability
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.ksp.toClassName
 import love.forte.kopper.annotation.PropertyType
+import love.forte.kopper.processor.util.asClassDeclaration
 import love.forte.kopper.processor.util.findPropProperty
 
 internal sealed class MapTarget(
@@ -71,84 +71,61 @@ internal sealed class MapTarget(
             targetSourceMap: MutableMap<PropertyPath, MapSourceProperty>,
         ): MapTarget {
             val name = "__target"
+
             // TODO check type?
-            val classDl = (type.declaration as KSClassDeclaration)
-            val constructor = classDl.primaryConstructor ?: classDl.getConstructors().firstOrNull()
+            val declaration = type.declaration.asClassDeclaration()
 
-            val target = InitialRequiredMapTarget(
-                mapSet = mapSet,
-                name = name,
-                type = type
-                // TODO for removal
-            )
+            require(declaration != null && !declaration.isAbstract()) {
+                "Type $declaration is not a constructable type."
+            }
 
-            if (constructor != null) {
-                for (parameter in constructor.parameters) {
-                    require(parameter.isVal || parameter.isVar || parameter.hasDefault) {
-                        "Constructor's parameter must be a property or has default value, but $parameter"
-                    }
+            val constructor = declaration.primaryConstructor
+                ?: error("Type $declaration must have a primary constructor.")
+            // declaration.getConstructors().firstOrNull()
 
-                    val pname = parameter.name!!.asString()
+            val target = InitialRequiredMapTarget(mapSet = mapSet, name = name, type = type)
 
-                    val args = mapSet.mapArgs.firstOrNull {
-                        it.target == pname
-                    }
+            for (parameter in constructor.parameters) {
+                require(parameter.isVal || parameter.isVar || parameter.hasDefault) {
+                    "Constructor's parameter must be a property or has default value, but $parameter"
+                }
 
-                    if (args?.isEvalValid == true) {
-                        val eval = args.eval
-                        val evalNullable = args.evalNullable
-                        // is eval
-                        val requireMap = EvalConstructorMapperMap(
-                            eval = eval,
-                            evalNullable = evalNullable,
-                            target = target,
-                            targetParameter = parameter
-                        )
+                val pname = parameter.name!!.asString()
 
-                        mapSet.maps.add(requireMap)
-                    } else {
-                        val sourceProperty = targetSourceMap.remove(pname.toPropertyPath())
-                            ?: error("Source property for parameter ${parameter.name} not found.")
+                val args = mapSet.mapArgs.firstOrNull {
+                    it.target == pname
+                }
 
-                        val requireMap = SourceConstructorMapperMap(
-                            source = sourceProperty.source,
-                            sourceProperty = sourceProperty,
-                            target = target,
-                            targetParameter = parameter
-                        )
+                val sourceProperty = targetSourceMap.remove(pname.toPropertyPath())
 
-                        mapSet.maps.add(requireMap)
-                    }
+                if (args?.isEvalValid == true) {
+                    val eval = args.eval
+                    val evalNullable = args.evalNullable
+                    // is eval
+                    val requireMap = EvalConstructorMapperMap(
+                        eval = eval,
+                        evalNullable = evalNullable,
+                        target = target,
+                        targetParameter = parameter
+                    )
 
-                    // add(RequiredPair(parameter, sourceProperty))
+                    mapSet.maps.add(requireMap)
+                } else {
+                    // check null
+                    sourceProperty ?: error("Source property for parameter ${parameter.name} not found.")
+
+                    val requireMap = SourceConstructorMapperMap(
+                        source = sourceProperty.source,
+                        sourceProperty = sourceProperty,
+                        target = target,
+                        targetParameter = parameter
+                    )
+
+                    mapSet.maps.add(requireMap)
                 }
             }
 
             return target
-
-            // val requires: List<RequiredPair> = if (constructor == null) {
-            //     emptyList()
-            // } else {
-            //     buildList {
-            //         for (parameter in constructor.parameters) {
-            //             require(parameter.isVal || parameter.isVar || parameter.hasDefault) {
-            //                 "Constructor's parameter must be a property or has default value, but $parameter"
-            //             }
-            //
-            //             val sourceProperty = targetSourceMap.remove(parameter.name!!.asString().toPropertyPath())
-            //                 ?: error("Source property for parameter ${parameter.name} not found.")
-            //
-            //             add(RequiredPair(parameter, sourceProperty))
-            //         }
-            //     }
-            // }
-            //
-            // return InitialRequiredMapTarget(
-            //     mapSet = mapSet,
-            //     name = name,
-            //     type = type,
-            //     requires = requires
-            // )
         }
 
         /**

@@ -16,14 +16,12 @@
 
 package love.forte.kopper.test
 
+import love.forte.kopper.annotation.Map
 import love.forte.kopper.annotation.Mapper
+import love.forte.kopper.annotation.PropertyType
 
 
-/**
- *
- * @author ForteScarlet
- */
-// @Mapper TODO
+@Mapper
 interface SubStructMapper {
     data class Source(val value: SourceSub)
     data class SourceSub(val number: Int)
@@ -31,6 +29,12 @@ interface SubStructMapper {
     data class Target(val value: TargetSub)
     data class TargetSub(val number: Long)
 
+    @Map(target = "value", eval = "subMap(source.value)")
     fun map(source: Source): Target
+
+    @Map(target = "value", eval = "value.subMap1()")
     fun Source.map1(): Target
+
+    fun subMap(source: SourceSub): TargetSub
+    fun SourceSub.subMap1(): TargetSub
 }
