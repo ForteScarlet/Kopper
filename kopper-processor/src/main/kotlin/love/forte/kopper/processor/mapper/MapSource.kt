@@ -98,6 +98,12 @@ internal data class MapSource(
             propertyType = PropertyType.AUTO
         )
     }
+
+    override fun toString(): String {
+        return "MapSource(isMain=$isMain, name='$name', type=$type)"
+    }
+
+
 }
 
 

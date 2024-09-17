@@ -24,8 +24,8 @@ interface DeepTestMapper {
     data class TargetClass(var name: String)
     data class Source(val value0: SourceSub1)
     data class SourceSub1(val value1: SourceSub2)
-    class SourceSub2 {
-        fun value2(): SourceSub3 = TODO()
+    class SourceSub2(private val sub: SourceSub3) {
+        fun value2(): SourceSub3 = sub
     }
     data class SourceSub3(val name: String)
 

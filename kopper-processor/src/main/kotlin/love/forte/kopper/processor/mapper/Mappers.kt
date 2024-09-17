@@ -26,6 +26,7 @@ import love.forte.kopper.annotation.PropertyType
 import love.forte.kopper.processor.util.asClassDeclaration
 import love.forte.kopper.processor.util.hasAnno
 import love.forte.kopper.processor.util.isMappableStructType
+import java.util.*
 
 internal fun resolveToMapper(
     environment: SymbolProcessorEnvironment,
@@ -99,6 +100,7 @@ internal fun KSFunctionDeclaration.resolveToMapSet(
     environment: SymbolProcessorEnvironment,
     resolver: Resolver,
     mapAnnoType: KSClassDeclaration,
+    parentProperty: MapSourceProperty? = null,
 ): MapperMapSet {
     val mapArgList = annotations
         .filter {
@@ -112,9 +114,16 @@ internal fun KSFunctionDeclaration.resolveToMapSet(
         resolver = resolver,
         sourceFun = this,
         mapArgs = mapArgList,
+        parentProperty = parentProperty,
     )
 
-    mapSet.initial()
+    // resolve targets
+    val mapTargetAnnoType = resolver.getClassDeclarationByName<Map.Target>()
+        ?: error("Cannot find Map.Target annotation declaration.")
+
+    mapSet.resolveSources(mapTargetAnnoType)
+
+    mapSet.initial(mapTargetAnnoType)
 
     // resolve originFiles
     resolveOriginFiles(this, originFiles)
@@ -128,31 +137,37 @@ internal fun resolveMapSet(
     resolver: Resolver,
     mapArgList: List<MapArgs>,
     func: MapperMapSetFunInfo,
+    sources: List<MapSource>,
+    parentProperty: MapSourceProperty? = null,
+    prefixPath: Path? = null,
 ): MapperMapSet {
     val mapSet = MapperMapSet(
         environment = environment,
         resolver = resolver,
         func = func,
         mapArgs = mapArgList,
+        parentProperty = parentProperty,
     )
 
-    mapSet.initial()
+    mapSet.sources.addAll(sources)
 
-    return mapSet
-}
-
-internal fun MapperMapSet.initial() {
     // resolve targets
     val mapTargetAnnoType = resolver.getClassDeclarationByName<Map.Target>()
         ?: error("Cannot find Map.Target annotation declaration.")
 
-    resolveSources(mapTargetAnnoType)
+    mapSet.initial(mapTargetAnnoType, prefixPath = prefixPath)
 
+    return mapSet
+}
+
+internal fun MapperMapSet.initial(
+    mapTargetAnnoType: KSClassDeclaration,
+    prefixPath: Path? = null,
+) {
     val targetArgs = mapArgs.associateByTo(mutableMapOf()) { it.target }
 
     resourceTargets(
-        mapTargetAnnoType = mapTargetAnnoType,
-        prefixPath = null,
+        prefixPath = prefixPath,
         targetArgs = targetArgs,
     )
 
@@ -178,7 +193,6 @@ internal fun resolveOriginFiles(sourceFun: KSFunctionDeclaration, originFiles: M
  *
  */
 internal fun MapperMapSet.resourceTargets(
-    mapTargetAnnoType: KSClassDeclaration,
     prefixPath: Path? = null,
     targetArgs: MutableMap<String, MapArgs>,
 ) {
@@ -187,16 +201,15 @@ internal fun MapperMapSet.resourceTargets(
 
     val targetType: KSType =
         func.receiver
-            ?.takeIf { it.hasAnno(mapTargetAnnoType.asStarProjectedType()) }
+            ?.takeIf { it.isTarget }
+            ?.type
             ?.also { receiver = it }
             ?: func.parameters
-                .firstOrNull {
-                    it.type.hasAnno(mapTargetAnnoType.asStarProjectedType())
-                }
+                .firstOrNull { it.isTarget }
                 ?.also { parameter = it }
                 ?.type
             ?: func.returns
-            ?: error("No target type found")
+            ?: error("No target type found in set $this")
 
     val targetClassDeclaration =
         targetType.declaration.asClassDeclaration()
@@ -205,6 +218,8 @@ internal fun MapperMapSet.resourceTargets(
     this.targetClassDeclaration = targetClassDeclaration
 
     val targetMap = mutableMapOf<Path, MapSourceProperty>()
+
+    val mainSource = sources.find { it.isMain }
 
     for (property in targetClassDeclaration.getAllProperties()) {
         val name = property.simpleName.asString()
@@ -228,8 +243,9 @@ internal fun MapperMapSet.resourceTargets(
             // 有明確指定的 @Map 目标，用 arg.source
             val argSourceName = targetArg.sourceName
             val targetSource =
-                if (argSourceName.isEmpty()) sources.first { it.isMain }
-                else sources.first { it.name == argSourceName }
+                if (argSourceName.isBlank()) mainSource!!
+                else sources.firstOrNull { it.name == argSourceName }
+                    ?: error("arg source name $argSourceName not found in ${sources.map { it.name }}")
 
             // 如果eval有效, 构建 eval property
             if (targetArg.isEvalValid) {
@@ -244,37 +260,50 @@ internal fun MapperMapSet.resourceTargets(
                     // TODO 是结构化的
                     //  伪装结构化 property，或者说构建一个基于内部 MapperMapSet 的 property
 
-                    val internalMapSet = resolveMapSet(
-                        environment = environment,
-                        resolver = resolver,
-                        mapArgList = emptyList(), // TODO 从 targetArgs 中寻找前缀
-                        func = MapperMapSetFunInfo(
-                            name = "resolve" +
-                                targetClassDeclaration.simpleName.asString().replaceFirstChar { it.uppercase() } +
-                                name.replaceFirstChar { it.uppercase() } +
-                                "For_" + func.name,
-                            receiver = null, // TODO 不用 receiver 的形式
-                            parameters = listOf(), // TODO 寻找所有所需的 sources. 是不是需要判断 target 已经存在与否?
-                            returns = property.type.resolve(),
+                    resolveSubMapSetProperty(
+                        mainSource = mainSource,
+                        property = property,
+                        name = name,
+                        path = path,
+                        targetArg = null,
+                        targetArgs = targetArgs,
+                    ) {
+                        targetSource.property(targetArg.source.toPath(), targetArg.sourceType)
+                            ?: error("Source property ${targetArg.source} for target property [$path] is not found in set $this")
+
+                    }
+
+                } else {
+                    targetSource.property(targetArg.source.toPath(), targetArg.sourceType)
+                        ?: error(
+                            "Source property [${targetArg.source} in ${sources.map { it.name }}] " +
+                                "in $targetSource for target property [$path] is not found in set $this"
                         )
-                    )
-
-                    // TODO
                 }
-
-                targetSource.property(targetArg.source.toPath(), targetArg.sourceType)
-                    ?: error("Source property ${targetArg.source} for target property [$path] is not found.")
             }
         } else {
             if (isMappableStructType) {
                 // TODO 是结构化的
                 //  伪装结构化 property，或者说构建一个基于内部 MapperMapSet 的 property
-            }
 
-            // 没有，去 source 找同名同路径的
-            sources.sortedByDescending { it.isMain }.firstNotNullOfOrNull { mapSource ->
-                mapSource.property(path, PropertyType.AUTO)
-            } ?: error("Source property for target property [$path] is not found.")
+                resolveSubMapSetProperty(
+                    mainSource = mainSource,
+                    property = property,
+                    name = name,
+                    path = path,
+                    targetArg = null,
+                    targetArgs = targetArgs,
+                ) {
+                    sources.sortedByDescending { it.isMain }.firstNotNullOfOrNull { mapSource ->
+                        mapSource.property(path, PropertyType.AUTO)
+                    } ?: error("Source property for target property [$path] is not found in set $this")
+                }
+            } else {
+                // 没有，去 source 找同名同路径的
+                sources.sortedByDescending { it.isMain }.firstNotNullOfOrNull { mapSource ->
+                    mapSource.property(path, PropertyType.AUTO)
+                } ?: error("Source property for target property [$path] is not found in set $this")
+            }
         }
 
         targetMap[name.toPath()] = targetSourceProperty
@@ -316,19 +345,120 @@ internal fun MapperMapSet.resourceTargets(
     this.target.targetSourceMap.putAll(targetMap)
 }
 
+internal inline fun MapperMapSet.resolveSubMapSetProperty(
+    mainSource: MapSource?,
+    property: KSPropertyDeclaration,
+    name: String,
+    path: Path,
+    targetArg: MapArgs?,
+    targetArgs: MutableMap<String, MapArgs>,
+    getTargetReceiverProperty: () -> MapSourceTypedProperty
+): InternalMapSetSourceProperty {
+
+    val subTargetNameArgs = mutableMapOf<String, MapArgs>()
+    val subSources = mutableSetOf<MapSource>()
+    val subFunParameters = mutableListOf<String>()
+
+    for ((key, value) in targetArgs) {
+        val newTargetKey = key.substringAfter("$name.")
+        val source = if (value.sourceName.isNotBlank()) {
+            sources.find { it.name == value.sourceName }
+        } else {
+            mainSource
+        }
+
+
+        source?.also { s ->
+            subFunParameters.add(s.name)
+            val newSource = s.copy(
+                isMain = false,
+                name = if (s.name == "this") "__this" else s.name
+            )
+            subSources.add(newSource)
+        }
+
+        val newArgsValue = value.copy(
+            target = newTargetKey,
+            sourceName = value.sourceName.ifBlank {
+                val mainName = mainSource?.name ?: return@ifBlank ""
+                if (mainName == "this") "__this" else mainName
+            }
+        )
+
+        subTargetNameArgs[newTargetKey] = newArgsValue
+    }
+
+    // TODO targetArgs.removeAll ?
+
+    val internalMapSetSources = LinkedList(subSources)
+
+    // 去 source 找同名同路径的
+    val targetReceiverProperty = getTargetReceiverProperty()
+
+    val mainPropertySource = MapSource(
+        this,
+        isMain = true,
+        name = "this",
+        type = targetReceiverProperty.type,
+    )
+
+    internalMapSetSources.addFirst(mainPropertySource)
+
+    val internalMapSet = resolveMapSet(
+        environment = environment,
+        resolver = resolver,
+        mapArgList = subTargetNameArgs.values.toList(),
+        func = MapperMapSetFunInfo(
+            name = "resolve" +
+                targetClassDeclaration.simpleName.asString().replaceFirstChar { it.uppercase() } +
+                name.replaceFirstChar { it.uppercase() } +
+                "For_" + func.name,
+            receiver = MapperMapSetFunReceiver(
+                type = mainPropertySource.type,
+                parameterType = MapperMapSetFunParameterType.SOURCE
+            ),
+            // TODO 寻找所有所需的 sources. 是不是需要判断 target 已经存在与否?
+            parameters = internalMapSetSources
+                .filter { !it.isMain }
+                .map { s ->
+                    MapperMapSetFunParameter(s.name, s.type, MapperMapSetFunParameterType.SOURCE)
+                },
+            returns = property.type.resolve(),
+        ),
+        sources = internalMapSetSources,
+        parentProperty = targetReceiverProperty,
+    )
+
+    internalMapSetSources.forEach { it.sourceMapSet = internalMapSet }
+
+    this.subMapperSets.add(internalMapSet)
+
+    return InternalMapSetSourceProperty(
+        source = mainPropertySource,
+        type = property.type.resolve(), // propertySource.type,
+        name = internalMapSet.func.name,
+        propertyType = PropertyType.FUNCTION,
+        subFunName = internalMapSet.func.name,
+        receiverProperty = targetReceiverProperty,
+        parameters = subFunParameters,
+    )
+
+}
+
+
 internal fun MapperMapSet.resolveSources(
     mapTargetType: KSClassDeclaration,
 ) {
     // 整理所有的 MapSource, 通过 receiver 或 parameter
     func.receiver
         // not target
-        ?.takeUnless { it.hasAnno(mapTargetType.asStarProjectedType()) }
+        ?.takeUnless { it.isTarget }
         ?.also {
             sources.add(
                 MapSource(
                     sourceMapSet = this,
                     name = "this",
-                    type = it
+                    type = it.type
                 )
             )
         }

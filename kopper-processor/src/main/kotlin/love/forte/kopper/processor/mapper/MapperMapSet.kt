@@ -16,6 +16,7 @@
 
 package love.forte.kopper.processor.mapper
 
+import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSClassDeclaration
@@ -24,18 +25,42 @@ import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ksp.toTypeName
+import love.forte.kopper.annotation.Map
+import love.forte.kopper.processor.util.hasAnno
 
 internal data class MapperMapSetFunInfo(
     val name: String,
-    val receiver: KSType?,
+    val receiver: MapperMapSetFunReceiver?,
     val parameters: List<MapperMapSetFunParameter>,
     val returns: KSType?
 )
 
+internal data class MapperMapSetFunReceiver(
+    val type: KSType,
+    val parameterType: MapperMapSetFunParameterType
+)
+
+internal inline val MapperMapSetFunReceiver.isSource: Boolean
+    get() = parameterType == MapperMapSetFunParameterType.SOURCE
+
+internal inline val MapperMapSetFunReceiver.isTarget: Boolean
+    get() = parameterType == MapperMapSetFunParameterType.TARGET
+
 internal data class MapperMapSetFunParameter(
     val name: String?,
     val type: KSType,
+    val parameterType: MapperMapSetFunParameterType,
 )
+
+internal inline val MapperMapSetFunParameter.isSource: Boolean
+    get() = parameterType == MapperMapSetFunParameterType.SOURCE
+
+internal inline val MapperMapSetFunParameter.isTarget: Boolean
+    get() = parameterType == MapperMapSetFunParameterType.TARGET
+
+internal enum class MapperMapSetFunParameterType {
+    SOURCE, TARGET
+}
 
 /**
  * A set of `Map`s in a Mapper.
@@ -49,6 +74,10 @@ internal class MapperMapSet internal constructor(
     val mapArgs: List<MapArgs>,
     val sources: MutableList<MapSource> = mutableListOf(),
     val maps: MutableList<MapperMap> = mutableListOf(),
+    /**
+     * If a sub mapSet
+     */
+    val parentProperty: MapSourceProperty? = null,
 ) {
     constructor(
         environment: SymbolProcessorEnvironment,
@@ -57,23 +86,43 @@ internal class MapperMapSet internal constructor(
         mapArgs: List<MapArgs>,
         sources: MutableList<MapSource> = mutableListOf(),
         maps: MutableList<MapperMap> = mutableListOf(),
+        parentProperty: MapSourceProperty? = null,
     ) : this(
         environment = environment,
         resolver = resolver,
         func = MapperMapSetFunInfo(
             name = sourceFun.simpleName.asString(),
-            receiver = sourceFun.extensionReceiver?.resolve(),
+            receiver = sourceFun.extensionReceiver?.resolve()?.let {
+                MapperMapSetFunReceiver(
+                    type = it,
+                    parameterType = if (
+                        it.hasAnno(resolver.getClassDeclarationByName<Map.Target>()!!.asStarProjectedType())
+                    ) {
+                        MapperMapSetFunParameterType.TARGET
+                    } else {
+                        MapperMapSetFunParameterType.SOURCE
+                    }
+                )
+            },
             parameters = sourceFun.parameters.map { p ->
                 MapperMapSetFunParameter(
                     name = p.name?.asString(),
-                    type = p.type.resolve()
+                    type = p.type.resolve(),
+                    parameterType = if (
+                        p.hasAnno(resolver.getClassDeclarationByName<Map.Target>()!!.asStarProjectedType())
+                    ) {
+                        MapperMapSetFunParameterType.TARGET
+                    } else {
+                        MapperMapSetFunParameterType.SOURCE
+                    }
                 )
             },
-            returns = sourceFun.returnType?.resolve()
+            returns = sourceFun.returnType?.resolve()?.takeIf { !resolver.builtIns.unitType.isAssignableFrom(it) }
         ),
         mapArgs = mapArgs,
         sources = sources,
         maps = maps,
+        parentProperty = parentProperty,
     ) {
         this.sourceFun = sourceFun
     }
@@ -82,6 +131,8 @@ internal class MapperMapSet internal constructor(
     lateinit var target: MapTarget
     var sourceFun: KSFunctionDeclaration? = null
         private set
+
+    var subMapperSets = mutableListOf<MapperMapSet>()
 
     val ignoreTargets = mapArgs
         .filter { it.ignore }
@@ -97,7 +148,7 @@ internal class MapperMapSet internal constructor(
         }
 
         // parameters
-        func.receiver?.also { funBuilder.receiver(it.toTypeName()) }
+        func.receiver?.also { funBuilder.receiver(it.type.toTypeName()) }
         func.parameters.forEach { funBuilder.addParameter(it.name!!, it.type.toTypeName()) }
         // return
         func.returns?.toTypeName()?.also { funBuilder.returns(it) }
@@ -139,6 +190,13 @@ internal class MapperMapSet internal constructor(
         )
 
         writer.add(key, info)
+
+        // subs
+        subMapperSets.forEach { it.emit(writer) }
+    }
+
+    override fun toString(): String {
+        return "MapperMapSet(func=$func, mapArgs=$mapArgs, sourceFun=$sourceFun, parentProperty=$parentProperty)"
     }
 
 

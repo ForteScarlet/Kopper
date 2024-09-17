@@ -18,11 +18,10 @@ package love.forte.kopper.test
 
 import love.forte.kopper.annotation.Map
 import love.forte.kopper.annotation.Mapper
-import love.forte.kopper.annotation.PropertyType
 
 
 @Mapper
-interface SubStructMapper {
+interface SubStructEvalMapper {
     data class Source(val value: SourceSub)
     data class SourceSub(val number: Int)
 
@@ -37,4 +36,40 @@ interface SubStructMapper {
 
     fun subMap(source: SourceSub): TargetSub
     fun SourceSub.subMap1(): TargetSub
+}
+
+@Mapper
+interface SubStructWithMapMapper {
+    data class Source(val value: SourceSub, val target: String)
+    data class SourceSub(val number: Int, val name: String)
+    data class Source1(val value: SourceSub1, val target: String)
+    data class SourceSub1(val age: Int, val name: String)
+
+    data class Target(val value: TargetSub, val target: String)
+    data class TargetSub(val number: Long, val name: String)
+
+    @Map(target = "value")
+    fun map(source: Source): Target
+
+    @Map(target = "value")
+    fun Source.map1(): Target
+
+    @Map(target = "value.number", source = "value.age")
+    fun map2(source: Source1): Target
+
+    @Map(target = "value.number", source = "value.age")
+    fun Source1.map2_1(): Target
+}
+
+@Mapper
+interface SubStructWithoutMapMapper {
+    data class Source(val value: SourceSub, val target: String)
+    data class SourceSub(val number: Int, val name: String)
+
+    data class Target(val value: TargetSub, val target: String)
+    data class TargetSub(val number: Long, val name: String)
+
+    fun map(source: Source): Target
+
+    fun Source.map1(): Target
 }

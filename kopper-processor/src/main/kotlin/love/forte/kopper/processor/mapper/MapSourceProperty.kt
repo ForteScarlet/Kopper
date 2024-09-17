@@ -75,6 +75,54 @@ internal fun PropertyRead.codeWithCast(writer: MapperWriter, target: KSType): Co
 }
 
 
+internal data class InternalMapSetSourceProperty(
+    override val source: MapSource,
+    override val type: KSType,
+    override val name: String,
+    override val propertyType: PropertyType,
+    // val mapSet: MapperMapSet,
+    val subFunName: String,
+    val receiverProperty: MapSourceProperty?,
+    val parameters: List<String>,
+) : MapSourceTypedProperty {
+    override fun read(): PropertyRead {
+        val code = CodeBlock.builder()
+            .apply {
+                if (receiverProperty != null) {
+                    val read = receiverProperty.read()
+                    val con = if (read.nullable) "?." else "."
+                    add(read.code)
+                    add(con)
+                }
+                // else {
+                //     val main = mapSet.sources.find { it.isMain }
+                //     if (main != null) {
+                //         val con = if (main.nullable) "?." else "."
+                //         add("%L", main.name)
+                //         add(con)
+                //     }
+                // }
+                add("%L(", name)
+                parameters.forEachIndexed { index, pname ->
+                    add("%L", pname)
+                    if (index != parameters.lastIndex) {
+                        add(",")
+                    }
+                }
+                add(")")
+            }
+            .build()
+
+        return PropertyRead(
+            name = source.name,
+            code = code,
+            nullable = nullable,
+            type = type,
+        )
+    }
+}
+
+
 internal data class DirectMapSourceProperty(
     override val source: MapSource,
     override val name: String,
