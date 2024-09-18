@@ -4,7 +4,5 @@ plugins {
 rootProject.name = "Kopper"
 
 include(":kopper-annotation")
-include(":kopper-common:kopper-common-core")
-// include(":kopper-common:kopper-common-transformer")
 include(":kopper-processor")
 include(":kopper-processor:kopper-processor-test")
