@@ -196,20 +196,13 @@ internal fun MapperMapSet.resourceTargets(
     prefixPath: Path? = null,
     targetArgs: MutableMap<String, MapArgs>,
 ) {
-    var receiver: KSType? = null
-    var parameter: MapperMapSetFunParameter? = null
+    val receiver: KSType? = func.receiver?.takeIf { it.isTarget }?.type
+    val parameter: MapperMapSetFunParameter? = func.parameters.firstOrNull { it.isTarget }
+    val returns = func.returns
 
     val targetType: KSType =
-        func.receiver
-            ?.takeIf { it.isTarget }
-            ?.type
-            ?.also { receiver = it }
-            ?: func.parameters
-                .firstOrNull { it.isTarget }
-                ?.also { parameter = it }
-                ?.type
-            ?: func.returns
-            ?: error("No target type found in set $this")
+        receiver ?: parameter?.type ?: returns
+        ?: error("No target type found in set $this")
 
     val targetClassDeclaration =
         targetType.declaration.asClassDeclaration()
@@ -257,8 +250,9 @@ internal fun MapperMapSet.resourceTargets(
                 )
             } else {
                 if (isMappableStructType) {
-                    // TODO 是结构化的
-                    //  伪装结构化 property，或者说构建一个基于内部 MapperMapSet 的 property
+                    // 是结构化的
+                    // 伪装结构化 property，
+                    // 或者说构建一个基于内部 MapperMapSet 的 property
 
                     resolveSubMapSetProperty(
                         mainSource = mainSource,
@@ -283,8 +277,9 @@ internal fun MapperMapSet.resourceTargets(
             }
         } else {
             if (isMappableStructType) {
-                // TODO 是结构化的
-                //  伪装结构化 property，或者说构建一个基于内部 MapperMapSet 的 property
+                // 是结构化的
+                // 伪装结构化 property，
+                // 或者说构建一个基于内部 MapperMapSet 的 property
 
                 resolveSubMapSetProperty(
                     mainSource = mainSource,
@@ -309,24 +304,24 @@ internal fun MapperMapSet.resourceTargets(
         targetMap[name.toPath()] = targetSourceProperty
     }
 
+    fun initialRequiredTarget() {
 
-    val receiver0 = receiver
-    val parameter0 = parameter
+    }
 
     val mapTarget = when {
         // is receiver
-        receiver0 != null -> {
+        receiver != null && receiver.nullability == Nullability.NOT_NULL -> {
             MapTarget.create(
                 mapSet = this,
-                receiver = receiver0
+                receiver = receiver
             )
         }
 
-        parameter0 != null -> {
+        parameter != null && parameter.type.nullability == Nullability.NOT_NULL -> {
             MapTarget.create(
                 mapSet = this,
-                parameterName = parameter0.name!!,
-                type = parameter0.type
+                parameterName = parameter.name!!,
+                type = parameter.type
             )
         }
 
@@ -336,7 +331,12 @@ internal fun MapperMapSet.resourceTargets(
             MapTarget.create(
                 mapSet = this,
                 type = returnType,
-                targetSourceMap = targetMap
+                targetSourceMap = targetMap,
+                nullableParameter = when {
+                    receiver != null -> "this"
+                    parameter != null -> parameter.name
+                    else -> null
+                }
             )
         }
     }

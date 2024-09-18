@@ -43,6 +43,7 @@ internal data class SourceConstructorMapperMap(
     val sourceProperty: MapSourceProperty,
     override val target: MapTarget,
     override val targetParameter: KSValueParameter,
+    val nullableParameter: String?,
 ) : ConstructorMapperMap {
     override fun emit(writer: MapperMapSetWriter, index: Int) {
         // parameter = source,
@@ -77,6 +78,7 @@ internal data class EvalConstructorMapperMap(
     val evalNullable: Boolean,
     override val target: MapTarget,
     override val targetParameter: KSValueParameter,
+    val nullableParameter: String?,
 ) : ConstructorMapperMap {
     override fun emit(writer: MapperMapSetWriter, index: Int) {
         val eval = CodeBlock.builder()

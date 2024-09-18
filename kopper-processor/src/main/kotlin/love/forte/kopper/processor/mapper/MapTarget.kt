@@ -69,6 +69,7 @@ internal sealed class MapTarget(
             mapSet: MapperMapSet,
             type: KSType,
             targetSourceMap: MutableMap<Path, MapSourceProperty>,
+            nullableParameter: String?,
         ): MapTarget {
             val name = "__target"
 
@@ -83,7 +84,12 @@ internal sealed class MapTarget(
                 ?: error("Type $declaration must have a primary constructor.")
             // declaration.getConstructors().firstOrNull()
 
-            val target = InitialRequiredMapTarget(mapSet = mapSet, name = name, type = type)
+            val target = InitialRequiredMapTarget(
+                mapSet = mapSet,
+                name = name,
+                type = type,
+                nullableParameter = nullableParameter,
+            )
 
             for (parameter in constructor.parameters) {
                 require(parameter.isVal || parameter.isVar || parameter.hasDefault) {
@@ -106,7 +112,8 @@ internal sealed class MapTarget(
                         eval = eval,
                         evalNullable = evalNullable,
                         target = target,
-                        targetParameter = parameter
+                        targetParameter = parameter,
+                        nullableParameter = nullableParameter,
                     )
 
                     mapSet.maps.add(requireMap)
@@ -118,7 +125,8 @@ internal sealed class MapTarget(
                         source = sourceProperty.source,
                         sourceProperty = sourceProperty,
                         target = target,
-                        targetParameter = parameter
+                        targetParameter = parameter,
+                        nullableParameter = nullableParameter,
                     )
 
                     mapSet.maps.add(requireMap)
@@ -177,6 +185,7 @@ private class InitialRequiredMapTarget(
     mapSet: MapperMapSet,
     name: String,
     type: KSType,
+    val nullableParameter: String?
 ) : MapTarget(mapSet, name, type) {
     override fun emitInitBegin(writer: MapperMapSetWriter) {
         val code = CodeBlock.builder().apply {
