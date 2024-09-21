@@ -163,3 +163,7 @@ internal fun KSDeclaration.isMappableStructType(builtIns: KSBuiltIns): Boolean {
 
 internal fun KSDeclaration.isDirectMappableType(builtIns: KSBuiltIns): Boolean =
     !isMappableStructType(builtIns)
+
+
+internal val Nullability.isNullable: Boolean
+    get() = this != Nullability.NOT_NULL

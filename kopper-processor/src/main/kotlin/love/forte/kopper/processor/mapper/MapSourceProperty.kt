@@ -25,7 +25,7 @@ import love.forte.kopper.annotation.PropertyType
  * A property for mapping source.
  */
 internal interface MapSourceProperty {
-    val source: MapSource
+    val source: MapActionSource
 
     /**
      * Name of source property.
@@ -76,7 +76,7 @@ internal fun PropertyRead.codeWithCast(writer: MapperWriter, target: KSType): Co
 
 
 internal data class InternalMapSetSourceProperty(
-    override val source: MapSource,
+    override val source: MapActionSource,
     override val type: KSType,
     override val name: String,
     override val propertyType: PropertyType,
@@ -124,7 +124,7 @@ internal data class InternalMapSetSourceProperty(
 
 
 internal data class DirectMapSourceProperty(
-    override val source: MapSource,
+    override val source: MapActionSource,
     override val name: String,
     override val propertyType: PropertyType,
     override val type: KSType,
@@ -151,7 +151,7 @@ internal data class DirectMapSourceProperty(
  * `a.b.c`
  */
 internal class DeepPathMapSourceProperty(
-    override val source: MapSource,
+    override val source: MapActionSource,
     private val parentProperty: MapSourceProperty,
     /**
      * Last final simple name.
@@ -196,7 +196,7 @@ internal class DeepPathMapSourceProperty(
 
 internal class EvalSourceProperty(
     override val name: String,
-    override val source: MapSource,
+    override val source: MapActionSource,
     override val nullable: Boolean,
     private val eval: String,
 ) : MapSourceProperty {

@@ -26,6 +26,7 @@ import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ksp.toTypeName
 import love.forte.kopper.annotation.Map
+import love.forte.kopper.processor.def.MapArgs
 import love.forte.kopper.processor.util.hasAnno
 
 internal data class MapperMapSetFunInfo(
@@ -67,12 +68,12 @@ internal enum class MapperMapSetFunParameterType {
  *
  * @author ForteScarlet
  */
-internal class MapperMapSet internal constructor(
+internal class MapperAction internal constructor(
     val environment: SymbolProcessorEnvironment,
     val resolver: Resolver,
     val func: MapperMapSetFunInfo,
     val mapArgs: List<MapArgs>,
-    val sources: MutableList<MapSource> = mutableListOf(),
+    val sources: MutableList<MapActionSource> = mutableListOf(),
     val maps: MutableList<MapperMap> = mutableListOf(),
     /**
      * If a sub mapSet
@@ -84,7 +85,7 @@ internal class MapperMapSet internal constructor(
         resolver: Resolver,
         sourceFun: KSFunctionDeclaration,
         mapArgs: List<MapArgs>,
-        sources: MutableList<MapSource> = mutableListOf(),
+        sources: MutableList<MapActionSource> = mutableListOf(),
         maps: MutableList<MapperMap> = mutableListOf(),
         parentProperty: MapSourceProperty? = null,
     ) : this(
@@ -132,7 +133,7 @@ internal class MapperMapSet internal constructor(
     var sourceFun: KSFunctionDeclaration? = null
         private set
 
-    var subMapperSets = mutableListOf<MapperMapSet>()
+    var subMapperSets = mutableListOf<MapperAction>()
 
     val ignoreTargets = mapArgs
         .filter { it.ignore }

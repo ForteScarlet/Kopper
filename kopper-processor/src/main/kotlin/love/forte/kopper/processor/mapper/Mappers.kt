@@ -23,6 +23,8 @@ import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.*
 import love.forte.kopper.annotation.Map
 import love.forte.kopper.annotation.PropertyType
+import love.forte.kopper.processor.def.MapArgs
+import love.forte.kopper.processor.def.resolveToMapArgs
 import love.forte.kopper.processor.util.asClassDeclaration
 import love.forte.kopper.processor.util.hasAnno
 import love.forte.kopper.processor.util.isMappableStructType
@@ -76,7 +78,7 @@ internal fun resolveMapSets(
     resolver: Resolver,
     declaration: KSClassDeclaration,
     mapAnnoType: KSClassDeclaration,
-): MutableList<MapperMapSet> {
+): MutableList<MapperAction> {
     val abstractFunctions = declaration.getAllFunctions()
         .filter { it.isAbstract }
         .toList()
@@ -101,7 +103,7 @@ internal fun KSFunctionDeclaration.resolveToMapSet(
     resolver: Resolver,
     mapAnnoType: KSClassDeclaration,
     parentProperty: MapSourceProperty? = null,
-): MapperMapSet {
+): MapperAction {
     val mapArgList = annotations
         .filter {
             mapAnnoType.asStarProjectedType().isAssignableFrom(it.annotationType.resolve())
@@ -109,7 +111,7 @@ internal fun KSFunctionDeclaration.resolveToMapSet(
         .map { it.resolveToMapArgs() }
         .toList()
 
-    val mapSet = MapperMapSet(
+    val mapSet = MapperAction(
         environment = environment,
         resolver = resolver,
         sourceFun = this,
@@ -137,11 +139,11 @@ internal fun resolveMapSet(
     resolver: Resolver,
     mapArgList: List<MapArgs>,
     func: MapperMapSetFunInfo,
-    sources: List<MapSource>,
+    sources: List<MapActionSource>,
     parentProperty: MapSourceProperty? = null,
     prefixPath: Path? = null,
-): MapperMapSet {
-    val mapSet = MapperMapSet(
+): MapperAction {
+    val mapSet = MapperAction(
         environment = environment,
         resolver = resolver,
         func = func,
@@ -160,7 +162,7 @@ internal fun resolveMapSet(
     return mapSet
 }
 
-internal fun MapperMapSet.initial(
+internal fun MapperAction.initial(
     mapTargetAnnoType: KSClassDeclaration,
     prefixPath: Path? = null,
 ) {
@@ -192,7 +194,7 @@ internal fun resolveOriginFiles(sourceFun: KSFunctionDeclaration, originFiles: M
  *
  *
  */
-internal fun MapperMapSet.resourceTargets(
+internal fun MapperAction.resourceTargets(
     prefixPath: Path? = null,
     targetArgs: MutableMap<String, MapArgs>,
 ) {
@@ -345,8 +347,8 @@ internal fun MapperMapSet.resourceTargets(
     this.target.targetSourceMap.putAll(targetMap)
 }
 
-internal inline fun MapperMapSet.resolveSubMapSetProperty(
-    mainSource: MapSource?,
+internal inline fun MapperAction.resolveSubMapSetProperty(
+    mainSource: MapActionSource?,
     property: KSPropertyDeclaration,
     name: String,
     path: Path,
@@ -356,7 +358,7 @@ internal inline fun MapperMapSet.resolveSubMapSetProperty(
 ): InternalMapSetSourceProperty {
 
     val subTargetNameArgs = mutableMapOf<String, MapArgs>()
-    val subSources = mutableSetOf<MapSource>()
+    val subSources = mutableSetOf<MapActionSource>()
     val subFunParameters = mutableListOf<String>()
 
     for ((key, value) in targetArgs) {
@@ -395,7 +397,7 @@ internal inline fun MapperMapSet.resolveSubMapSetProperty(
     // 去 source 找同名同路径的
     val targetReceiverProperty = getTargetReceiverProperty()
 
-    val mainPropertySource = MapSource(
+    val mainPropertySource = MapActionSource(
         this,
         isMain = true,
         name = "this",
@@ -446,7 +448,7 @@ internal inline fun MapperMapSet.resolveSubMapSetProperty(
 }
 
 
-internal fun MapperMapSet.resolveSources(
+internal fun MapperAction.resolveSources(
     mapTargetType: KSClassDeclaration,
 ) {
     // 整理所有的 MapSource, 通过 receiver 或 parameter
@@ -455,7 +457,7 @@ internal fun MapperMapSet.resolveSources(
         ?.takeUnless { it.isTarget }
         ?.also {
             sources.add(
-                MapSource(
+                MapActionSource(
                     sourceMapSet = this,
                     name = "this",
                     type = it.type
@@ -467,7 +469,7 @@ internal fun MapperMapSet.resolveSources(
         // not target
         if (!parameter.type.hasAnno(mapTargetType.asStarProjectedType())) {
             sources.add(
-                MapSource(
+                MapActionSource(
                     sourceMapSet = this,
                     name = parameter.name ?: "?ERROR",
                     type = parameter.type
@@ -483,7 +485,7 @@ internal fun MapperMapSet.resolveSources(
  * 先进行 [resourceTargets] 和 [resolveSources]
  *
  */
-internal fun MapperMapSet.resolveMaps() {
+internal fun MapperAction.resolveMaps() {
     data class PathPropertyEntry(
         val path: Path,
         val property: MapSourceProperty,
@@ -519,7 +521,7 @@ internal fun MapperMapSet.resolveMaps() {
 
 }
 
-private fun MapperMapSet.resolveSingleTopTarget(
+private fun MapperAction.resolveSingleTopTarget(
     target: String,
     path: Path,
     property: MapSourceProperty

@@ -27,8 +27,8 @@ import love.forte.kopper.processor.util.findProperty
 /**
  * A type as a mapping source.
  */
-internal data class MapSource(
-    var sourceMapSet: MapperMapSet,
+internal data class MapActionSource(
+    var sourceMapSet: MapperAction,
     var isMain: Boolean = false,
     var name: String,
     var type: KSType,
@@ -40,7 +40,7 @@ internal data class MapSource(
         get() = type.nullability != Nullability.NOT_NULL
 
     private val properties: MutableMap<Path, MapSourceTypedProperty> = mutableMapOf()
-    private val subSources: MutableMap<String, MapSource> = mutableMapOf()
+    private val subSources: MutableMap<String, MapActionSource> = mutableMapOf()
 
     fun property(
         path: Path,
@@ -83,7 +83,7 @@ internal data class MapSource(
         val subSource = subSources.computeIfAbsent(
             currentProperty.name
         ) {
-            MapSource(
+            MapActionSource(
                 sourceMapSet = sourceMapSet,
                 isMain = false,
                 name = currentProperty.name,
@@ -108,7 +108,7 @@ internal data class MapSource(
 
 
 private fun propertyDirect0(
-    source: MapSource,
+    source: MapActionSource,
     from: KSType,
     name: String,
     propertyType: PropertyType,
@@ -137,7 +137,7 @@ private fun propertyDirect0(
 )
 
 private fun propertyDeep0(
-    source: MapSource,
+    source: MapActionSource,
     parentProperty: MapSourceProperty,
     from: KSType,
     name: String,

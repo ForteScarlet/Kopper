@@ -17,7 +17,6 @@
 package love.forte.kopper.processor.mapper
 
 import com.google.devtools.ksp.getClassDeclarationByName
-import com.google.devtools.ksp.innerArguments
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSType
@@ -39,7 +38,7 @@ internal data class MapperMapSetInfo(
 internal data class MapperMapSetKey(
     val name: String,
     val target: MapTarget,
-    val sources: Set<MapSource>,
+    val sources: Set<MapActionSource>,
 )
 
 internal class MapperWriter(

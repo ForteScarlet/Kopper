@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package love.forte.kopper.processor.mapper
+package love.forte.kopper.processor.def
 
 import com.google.devtools.ksp.symbol.KSAnnotation
 import love.forte.kopper.annotation.Map
@@ -22,6 +22,9 @@ import love.forte.kopper.annotation.PropertyType
 import love.forte.kopper.processor.util.findArg
 import love.forte.kopper.processor.util.findEnumArg
 
+/**
+ * Map args from annotation [Map].
+ */
 internal data class MapArgs(
     val target: String,
     val source: String,

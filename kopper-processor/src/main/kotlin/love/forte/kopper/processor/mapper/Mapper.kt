@@ -21,8 +21,6 @@ import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFile
-import com.squareup.kotlinpoet.AnnotationSpec
-import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.KModifier.*
 import com.squareup.kotlinpoet.TypeSpec
@@ -31,7 +29,7 @@ import love.forte.kopper.annotation.MapperGenTarget
 import love.forte.kopper.annotation.MapperGenVisibility
 
 /**
- * A Mapper with a set of [MapperMapSet].
+ * A Mapper with a set of [MapperAction].
  */
 internal class Mapper(
     val environment: SymbolProcessorEnvironment,
@@ -43,9 +41,9 @@ internal class Mapper(
     val targetPackage: String,
 
     /**
-     * The set of [MapperMapSet].
+     * The set of [MapperAction].
      */
-    val mapSets: MutableList<MapperMapSet> = mutableListOf(),
+    val mapSets: MutableList<MapperAction> = mutableListOf(),
 
     val superType: KSClassDeclaration,
 

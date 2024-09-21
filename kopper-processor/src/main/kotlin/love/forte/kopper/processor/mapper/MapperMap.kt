@@ -21,7 +21,7 @@ import com.google.devtools.ksp.symbol.Nullability
 import com.squareup.kotlinpoet.CodeBlock
 
 /**
- * A single map in [MapperMapSet].
+ * A single map in [MapperAction].
  */
 internal sealed interface MapperMap {
     /**
@@ -39,7 +39,7 @@ internal interface ConstructorMapperMap : MapperMap {
  * Required properties' mapper map.
  */
 internal data class SourceConstructorMapperMap(
-    val source: MapSource,
+    val source: MapActionSource,
     val sourceProperty: MapSourceProperty,
     override val target: MapTarget,
     override val targetParameter: KSValueParameter,
@@ -116,7 +116,7 @@ internal data class SourcePropertyMapperMap(
      * The source. If the source is an eval expression,
      * the source will be the main source.
      */
-    val source: MapSource,
+    val source: MapActionSource,
     val sourceProperty: MapSourceProperty,
     override val target: MapTarget,
     override val targetProperty: MapTargetProperty,

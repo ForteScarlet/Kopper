@@ -27,7 +27,7 @@ import love.forte.kopper.processor.util.asClassDeclaration
 import love.forte.kopper.processor.util.findPropProperty
 
 internal sealed class MapTarget(
-    val mapSet: MapperMapSet,
+    val mapSet: MapperAction,
     val name: String,
     val type: KSType,
 ) {
@@ -66,7 +66,7 @@ internal sealed class MapTarget(
          *
          */
         internal fun create(
-            mapSet: MapperMapSet,
+            mapSet: MapperAction,
             type: KSType,
             targetSourceMap: MutableMap<Path, MapSourceProperty>,
             nullableParameter: String?,
@@ -141,7 +141,7 @@ internal sealed class MapTarget(
          *
          */
         internal fun create(
-            mapSet: MapperMapSet,
+            mapSet: MapperAction,
             parameterName: String,
             type: KSType,
         ): MapTarget {
@@ -157,7 +157,7 @@ internal sealed class MapTarget(
          *
          */
         internal fun create(
-            mapSet: MapperMapSet,
+            mapSet: MapperAction,
             receiver: KSType,
         ): MapTarget {
             return ReceiverMapTarget(
@@ -170,7 +170,7 @@ internal sealed class MapTarget(
 }
 
 private class IncludedParameterMapTarget(
-    mapSet: MapperMapSet,
+    mapSet: MapperAction,
     name: String,
     type: KSType,
 ) : MapTarget(mapSet, name, type) {
@@ -182,7 +182,7 @@ private class IncludedParameterMapTarget(
 }
 
 private class InitialRequiredMapTarget(
-    mapSet: MapperMapSet,
+    mapSet: MapperAction,
     name: String,
     type: KSType,
     val nullableParameter: String?
@@ -201,7 +201,7 @@ private class InitialRequiredMapTarget(
 }
 
 private class ReceiverMapTarget(
-    mapSet: MapperMapSet,
+    mapSet: MapperAction,
     name: String,
     type: KSType,
 ) : MapTarget(mapSet, name, type) {
