@@ -35,6 +35,7 @@ internal data class MapperActionSourceDef(
      * Incoming parameter or receiver.
      */
     val incoming: MapActionIncoming,
+    val isMain: Boolean,
 ) {
     // find property
 

@@ -24,6 +24,7 @@ import com.google.devtools.ksp.symbol.*
 import love.forte.kopper.annotation.Map
 import love.forte.kopper.annotation.PropertyType
 import love.forte.kopper.processor.def.MapArgs
+import love.forte.kopper.processor.def.resolveMapperArgs
 import love.forte.kopper.processor.def.resolveToMapArgs
 import love.forte.kopper.processor.util.asClassDeclaration
 import love.forte.kopper.processor.util.hasAnno

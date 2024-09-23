@@ -37,6 +37,10 @@ internal data class MapperActionTargetDef(
      * Incoming or `null` if no incoming parameter or receiver.
      */
     val incoming: MapActionIncoming?,
+    /**
+     * True if return is required
+     */
+    val returns: Boolean,
 ) {
     // find property
 

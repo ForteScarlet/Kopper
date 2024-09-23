@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package love.forte.kopper.processor.mapper
+package love.forte.kopper.processor.def
 
 import com.google.devtools.ksp.symbol.KSAnnotation
 import love.forte.kopper.annotation.MapperGenTarget
