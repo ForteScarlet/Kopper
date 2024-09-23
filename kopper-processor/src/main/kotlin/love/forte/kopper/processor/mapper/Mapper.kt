@@ -16,79 +16,85 @@
 
 package love.forte.kopper.processor.mapper
 
-import com.google.devtools.ksp.processing.Resolver
-import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.ClassKind
-import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.KSFile
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.KModifier.*
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.toClassName
 import love.forte.kopper.annotation.MapperGenTarget
 import love.forte.kopper.annotation.MapperGenVisibility
+import love.forte.kopper.processor.def.MapperDef
 
 /**
  * A Mapper with a set of [MapperAction].
  */
 internal class Mapper(
-    val environment: SymbolProcessorEnvironment,
-    val resolver: Resolver,
-    /**
-     * The gen target name.
-     */
-    val targetName: String,
-    val targetPackage: String,
-
-    /**
-     * The set of [MapperAction].
-     */
-    val mapSets: MutableList<MapperAction> = mutableListOf(),
-
-    val superType: KSClassDeclaration,
-
-    val genTarget: MapperGenTarget,
-    val genVisibility: MapperGenVisibility,
-
-    // for writing
-    val originatingKSFiles: MutableList<KSFile> = mutableListOf(),
+    val def: MapperDef,
+    val generator: MapperGenerator,
 ) {
+    val typeBuilder: TypeSpec.Builder
 
-    fun generate(): FileSpec {
-        val mapperClass = when (genTarget) {
+    init {
+        typeBuilder = when (def.genTarget) {
             MapperGenTarget.CLASS -> {
-                TypeSpec.classBuilder(targetName)
+                TypeSpec.classBuilder(def.simpleName)
             }
 
             MapperGenTarget.OBJECT -> {
-                TypeSpec.objectBuilder(targetName)
+                TypeSpec.objectBuilder(def.simpleName)
             }
         }
 
-        when (genVisibility) {
+        when (def.genVisibility) {
             MapperGenVisibility.PUBLIC -> {
-                mapperClass.addModifiers(PUBLIC)
+                typeBuilder.addModifiers(PUBLIC)
             }
 
             MapperGenVisibility.INTERNAL -> {
-                mapperClass.addModifiers(INTERNAL)
+                typeBuilder.addModifiers(INTERNAL)
             }
         }
 
-        if (superType.classKind == ClassKind.INTERFACE) {
-            mapperClass.addSuperinterface(superType.toClassName())
+        if (def.sourceDeclaration.classKind == ClassKind.INTERFACE) {
+            typeBuilder.addSuperinterface(def.sourceDeclaration.toClassName())
         } else {
-            mapperClass.superclass(superType.toClassName())
+            typeBuilder.superclass(def.sourceDeclaration.toClassName())
         }
+    }
+
+    fun generate() {
+        val actionGenerator = MapperActionGenerator(generator)
+
+        val actions = def.declarationActions.map { def ->
+            MapperAction(def = def, generator = actionGenerator).also { it.prepare() }
+        }
+
+        for (action in actions) {
+            action.generate()
+        }
+
+        for (generatedAction in actionGenerator.actions) {
+            typeBuilder.addFunction(generatedAction.funBuilder.build())
+        }
+
+        generator.addFile(
+            FileSpec.builder(def.packageName, def.simpleName).apply {
+                addType(typeBuilder.build())
+            }
+        )
+    }
+
+
+    fun generate0() {
 
         val mapperWriter = MapperWriter(
-            environment = environment,
-            resolver = resolver
+            environment = def.environment,
+            resolver = def.resolver
         )
 
-        mapSets.forEach { mapSet ->
-            mapSet.emit(mapperWriter)
-        }
+        // mapSets.forEach { mapSet ->
+        //     mapSet.emit(mapperWriter)
+        // }
 
         mapperWriter.collect.values.sortedBy { it.isAncillary }.forEach { info ->
             val funSpec = info.funSpec
@@ -99,15 +105,15 @@ internal class Mapper(
                 }
             }
 
-            mapperClass.addFunction(funSpec.build())
+            // mapperClass.addFunction(funSpec.build())
         }
 
         // File
-        val file = FileSpec.builder(targetPackage, targetName).apply {
-            addType(mapperClass.build())
-        }.build()
+        val file = FileSpec.builder(def.packageName, def.simpleName).apply {
+            // addType(mapperClass.build())
+        }
 
-        return file
+        generator.addFile(file)
     }
 }
 

@@ -16,6 +16,7 @@
 
 package love.forte.kopper.processor
 
+import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.isAbstract
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessor
@@ -23,7 +24,10 @@ import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.ksp.writeTo
+import love.forte.kopper.processor.def.MapperDef
+import love.forte.kopper.processor.def.resolveToMapperDef
 import love.forte.kopper.processor.mapper.Mapper
+import love.forte.kopper.processor.mapper.MapperGenerator
 import love.forte.kopper.processor.mapper.resolveToMapper
 
 private const val MAPPER_ANNOTATION_NAME = "love.forte.kopper.annotation.Mapper"
@@ -32,27 +36,45 @@ internal class KopperProcessor(
     private val environment: SymbolProcessorEnvironment
 ) : SymbolProcessor {
 
-    private val mappers = mutableListOf<Mapper>()
+    private val mapperDefs = mutableListOf<MapperDef>()
 
     override fun process(resolver: Resolver): List<KSAnnotated> {
+        val mapperAnnoType = resolver.getClassDeclarationByName<love.forte.kopper.annotation.Mapper>()
+            ?: error("Cannot find Mapper annotation declaration.")
+
         resolver.getSymbolsWithAnnotation(MAPPER_ANNOTATION_NAME)
             .filterIsInstance<KSClassDeclaration>()
             // interface or abstract class.
             .filter { it.isAbstract() }
             .forEach { mapperDeclaration ->
-                mappers.add(resolveToMapper(environment, resolver, mapperDeclaration))
+                val mapperAnnotation = mapperDeclaration.annotations.first {
+                    mapperAnnoType.asStarProjectedType().isAssignableFrom(it.annotationType.resolve())
+                }
+
+                val mapperDef = mapperDeclaration.resolveToMapperDef(
+                    environment = environment,
+                    resolver = resolver,
+                    mapperAnnotation = mapperAnnotation
+                )
+
+                mapperDefs.add(mapperDef)
             }
 
         return emptyList()
     }
 
     override fun finish() {
-        mappers.forEach { mapper ->
-            mapper.generate().writeTo(
-                codeGenerator = environment.codeGenerator,
-                aggregating = true,
-                originatingKSFiles = mapper.originatingKSFiles
-            )
-        }
+        val generator = MapperGenerator(mapperDefs)
+        generator.generate()
+
+        // TODO writeTo
+
+        // mapperDefs.forEach { mapper ->
+        //     mapper.generate().writeTo(
+        //         codeGenerator = environment.codeGenerator,
+        //         aggregating = true,
+        //         originatingKSFiles = mapper.originatingKSFiles
+        //     )
+        // }
     }
 }

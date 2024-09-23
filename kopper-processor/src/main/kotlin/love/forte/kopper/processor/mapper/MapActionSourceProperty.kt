@@ -24,7 +24,7 @@ import love.forte.kopper.annotation.PropertyType
 /**
  * A property for mapping source.
  */
-internal interface MapSourceProperty {
+internal interface MapActionSourceProperty {
     val source: MapActionSource
 
     /**
@@ -33,7 +33,7 @@ internal interface MapSourceProperty {
     val name: String
 
     /**
-     * The [MapSourceProperty]'s [PropertyType].
+     * The [MapActionSourceProperty]'s [PropertyType].
      * - If it is a function, it must have no parameters and have a return value, e.g. `fun prop(): AType`.
      *   The `get` prefix is disregarded and its name can be specified manually and directly.
      */
@@ -52,7 +52,7 @@ internal interface MapSourceProperty {
     fun read(): PropertyRead
 }
 
-internal interface MapSourceTypedProperty : MapSourceProperty {
+internal interface MapActionSourceTypedProperty : MapActionSourceProperty {
     val type: KSType
     override val nullable: Boolean
         get() = type.nullability != Nullability.NOT_NULL
@@ -75,16 +75,16 @@ internal fun PropertyRead.codeWithCast(writer: MapperWriter, target: KSType): Co
 }
 
 
-internal data class InternalMapSetSourceProperty(
+internal data class InternalMapSetActionSourceProperty(
     override val source: MapActionSource,
     override val type: KSType,
     override val name: String,
     override val propertyType: PropertyType,
     // val mapSet: MapperMapSet,
     val subFunName: String,
-    val receiverProperty: MapSourceProperty?,
+    val receiverProperty: MapActionSourceProperty?,
     val parameters: List<String>,
-) : MapSourceTypedProperty {
+) : MapActionSourceTypedProperty {
     override fun read(): PropertyRead {
         val code = CodeBlock.builder()
             .apply {
@@ -123,12 +123,12 @@ internal data class InternalMapSetSourceProperty(
 }
 
 
-internal data class DirectMapSourceProperty(
+internal data class DirectMapActionSourceProperty(
     override val source: MapActionSource,
     override val name: String,
     override val propertyType: PropertyType,
     override val type: KSType,
-) : MapSourceTypedProperty {
+) : MapActionSourceTypedProperty {
     override fun read(): PropertyRead {
         val sourceNullable = source.nullable
         val conOp = if (sourceNullable) "?." else "."
@@ -150,16 +150,16 @@ internal data class DirectMapSourceProperty(
 /**
  * `a.b.c`
  */
-internal class DeepPathMapSourceProperty(
+internal class DeepPathMapActionSourceProperty(
     override val source: MapActionSource,
-    private val parentProperty: MapSourceProperty,
+    private val parentProperty: MapActionSourceProperty,
     /**
      * Last final simple name.
      */
     override val name: String,
     override val propertyType: PropertyType,
     override val type: KSType,
-) : MapSourceTypedProperty {
+) : MapActionSourceTypedProperty {
     override fun read(): PropertyRead {
         val parentPropertyReadCode = parentProperty.read()
         val conOp = if (parentPropertyReadCode.nullable) "?." else "."
@@ -194,12 +194,12 @@ internal class DeepPathMapSourceProperty(
 }
 
 
-internal class EvalSourceProperty(
+internal class EvalActionSourceProperty(
     override val name: String,
     override val source: MapActionSource,
     override val nullable: Boolean,
     private val eval: String,
-) : MapSourceProperty {
+) : MapActionSourceProperty {
     override val propertyType: PropertyType
         get() = PropertyType.AUTO
 

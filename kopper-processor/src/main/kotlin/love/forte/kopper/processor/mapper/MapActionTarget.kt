@@ -26,12 +26,11 @@ import love.forte.kopper.annotation.PropertyType
 import love.forte.kopper.processor.util.asClassDeclaration
 import love.forte.kopper.processor.util.findPropProperty
 
-internal sealed class MapTarget(
-    val mapSet: MapperAction,
+internal sealed class MapActionTarget(
     val name: String,
     val type: KSType,
 ) {
-    val targetSourceMap: MutableMap<Path, MapSourceProperty> = mutableMapOf()
+    val targetSourceMap: MutableMap<Path, MapActionSourceProperty> = mutableMapOf()
 
     /**
      * Kotlin's nullable or Java's platform type.
@@ -42,12 +41,12 @@ internal sealed class MapTarget(
     /**
      * find a property from this target.
      */
-    fun property(name: String): MapTargetProperty? {
+    fun property(name: String): MapActionTargetProperty? {
         return findPropProperty(
             name = name,
             type = type,
         ) {
-            MapTargetPropertyImpl(
+            MapActionTargetPropertyImpl(
                 target = this,
                 name = it.simpleName.asString(),
                 propertyType = PropertyType.PROPERTY,
@@ -62,15 +61,15 @@ internal sealed class MapTarget(
 
     companion object {
         /**
-         * Create a [MapTarget] with return [type] only.
+         * Create a [MapActionTarget] with return [type] only.
          *
          */
         internal fun create(
-            mapSet: MapperAction,
+            action: MapperAction,
             type: KSType,
-            targetSourceMap: MutableMap<Path, MapSourceProperty>,
+            targetSourceMap: MutableMap<Path, MapActionSourceProperty>,
             nullableParameter: String?,
-        ): MapTarget {
+        ): MapActionTarget {
             val name = "__target"
 
             // TODO check type?
@@ -85,7 +84,7 @@ internal sealed class MapTarget(
             // declaration.getConstructors().firstOrNull()
 
             val target = InitialRequiredMapTarget(
-                mapSet = mapSet,
+                mapSet = action,
                 name = name,
                 type = type,
                 nullableParameter = nullableParameter,
@@ -98,7 +97,7 @@ internal sealed class MapTarget(
 
                 val pname = parameter.name!!.asString()
 
-                val args = mapSet.mapArgs.firstOrNull {
+                val args = action.def.mapArgs.firstOrNull {
                     it.target == pname
                 }
 
@@ -116,7 +115,7 @@ internal sealed class MapTarget(
                         nullableParameter = nullableParameter,
                     )
 
-                    mapSet.maps.add(requireMap)
+                    action.maps.add(requireMap)
                 } else {
                     // check null
                     sourceProperty ?: error("Source property for parameter ${parameter.name} not found.")
@@ -129,7 +128,7 @@ internal sealed class MapTarget(
                         nullableParameter = nullableParameter,
                     )
 
-                    mapSet.maps.add(requireMap)
+                    action.maps.add(requireMap)
                 }
             }
 
@@ -137,14 +136,14 @@ internal sealed class MapTarget(
         }
 
         /**
-         * Create a [MapTarget] with included [KSValueParameter]
+         * Create a [MapActionTarget] with included [KSValueParameter]
          *
          */
         internal fun create(
             mapSet: MapperAction,
             parameterName: String,
             type: KSType,
-        ): MapTarget {
+        ): MapActionTarget {
             return IncludedParameterMapTarget(
                 mapSet = mapSet,
                 name = parameterName,
@@ -153,13 +152,13 @@ internal sealed class MapTarget(
         }
 
         /**
-         * Create a [MapTarget] with included [receiver]
+         * Create a [MapActionTarget] with included [receiver]
          *
          */
         internal fun create(
             mapSet: MapperAction,
             receiver: KSType,
-        ): MapTarget {
+        ): MapActionTarget {
             return ReceiverMapTarget(
                 mapSet = mapSet,
                 name = "this",
@@ -173,7 +172,7 @@ private class IncludedParameterMapTarget(
     mapSet: MapperAction,
     name: String,
     type: KSType,
-) : MapTarget(mapSet, name, type) {
+) : MapActionTarget(name, type) {
     override fun emitInitBegin(writer: MapperMapSetWriter) {
     }
 
@@ -186,7 +185,7 @@ private class InitialRequiredMapTarget(
     name: String,
     type: KSType,
     val nullableParameter: String?
-) : MapTarget(mapSet, name, type) {
+) : MapActionTarget(name, type) {
     override fun emitInitBegin(writer: MapperMapSetWriter) {
         val code = CodeBlock.builder().apply {
             addStatement("val %L = %T(", name, type.toClassName())
@@ -204,7 +203,7 @@ private class ReceiverMapTarget(
     mapSet: MapperAction,
     name: String,
     type: KSType,
-) : MapTarget(mapSet, name, type) {
+) : MapActionTarget(name, type) {
     override fun emitInitBegin(writer: MapperMapSetWriter) {
     }
 

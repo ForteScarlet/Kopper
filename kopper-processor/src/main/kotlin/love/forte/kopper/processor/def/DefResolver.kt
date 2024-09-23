@@ -108,6 +108,8 @@ internal fun MapperDefResolveContext.resolveMapActionDefs(
         .map { it.resolveToMapArgs() }
         .toList()
 
+    // TODO 检测不允许存在相同的 target
+
     val sources = resolveActionSources(function)
     val target = resolveActionTarget(function)
 
@@ -115,7 +117,8 @@ internal fun MapperDefResolveContext.resolveMapActionDefs(
         name = name,
         mapArgs = mapArgs,
         sources = sources,
-        target = target
+        target = target,
+        source = function
     )
 }
 
@@ -277,9 +280,18 @@ internal fun MapperDefResolveContext.resolveMapActionDefs(
     mapArgs: List<MapArgs>,
     sources: List<MapperActionSourceDef>,
     target: MapperActionTargetDef,
+    source: KSFunctionDeclaration,
 ) {
-    // TODO maps: MapperMap?
-    //  or just resolve sub actions?
+    val action = MapperActionDef(
+        environment = environment,
+        resolver = resolver,
+        name = name,
+        mapArgs = mapArgs,
+        sources = sources,
+        target = target,
+        sourceFun = source
+    )
 
+    actions.add(action)
 }
 

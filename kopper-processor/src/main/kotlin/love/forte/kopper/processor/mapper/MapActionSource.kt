@@ -39,20 +39,20 @@ internal data class MapActionSource(
     val nullable: Boolean
         get() = type.nullability != Nullability.NOT_NULL
 
-    private val properties: MutableMap<Path, MapSourceTypedProperty> = mutableMapOf()
+    private val properties: MutableMap<Path, MapActionSourceTypedProperty> = mutableMapOf()
     private val subSources: MutableMap<String, MapActionSource> = mutableMapOf()
 
     fun property(
         path: Path,
         propertyType: PropertyType
-    ): MapSourceTypedProperty? = property(null, path, path, propertyType)
+    ): MapActionSourceTypedProperty? = property(null, path, path, propertyType)
 
     private fun property(
-        parentProperty: MapSourceProperty? = null,
+        parentProperty: MapActionSourceProperty? = null,
         fullPath: Path,
         path: Path,
         propertyType: PropertyType
-    ): MapSourceTypedProperty? {
+    ): MapActionSourceTypedProperty? {
         if (path.child == null) {
             return if (parentProperty != null) {
                 logger.info("has parent prop(${parentProperty}) for path $path")
@@ -112,14 +112,14 @@ private fun propertyDirect0(
     from: KSType,
     name: String,
     propertyType: PropertyType,
-    properties: MutableMap<Path, MapSourceTypedProperty>,
-): MapSourceTypedProperty? = property0(
+    properties: MutableMap<Path, MapActionSourceTypedProperty>,
+): MapActionSourceTypedProperty? = property0(
     from = from,
     name = name,
     propertyType = propertyType,
     properties = properties,
     onProperty = {
-        DirectMapSourceProperty(
+        DirectMapActionSourceProperty(
             source = source,
             name = it.simpleName.asString(),
             propertyType = PropertyType.PROPERTY,
@@ -127,7 +127,7 @@ private fun propertyDirect0(
         )
     },
     onFunction = {
-        DirectMapSourceProperty(
+        DirectMapActionSourceProperty(
             source = source,
             name = it.simpleName.asString(),
             propertyType = PropertyType.FUNCTION,
@@ -138,18 +138,18 @@ private fun propertyDirect0(
 
 private fun propertyDeep0(
     source: MapActionSource,
-    parentProperty: MapSourceProperty,
+    parentProperty: MapActionSourceProperty,
     from: KSType,
     name: String,
     propertyType: PropertyType,
-    properties: MutableMap<Path, MapSourceTypedProperty>,
-): MapSourceTypedProperty? = property0(
+    properties: MutableMap<Path, MapActionSourceTypedProperty>,
+): MapActionSourceTypedProperty? = property0(
     from = from,
     name = name,
     propertyType = propertyType,
     properties = properties,
     onProperty = {
-        DeepPathMapSourceProperty(
+        DeepPathMapActionSourceProperty(
             source = source,
             parentProperty = parentProperty,
             name = name,
@@ -158,7 +158,7 @@ private fun propertyDeep0(
         )
     },
     onFunction = {
-        DeepPathMapSourceProperty(
+        DeepPathMapActionSourceProperty(
             source = source,
             parentProperty = parentProperty,
             name = name,
@@ -172,10 +172,10 @@ private inline fun property0(
     from: KSType,
     name: String,
     propertyType: PropertyType,
-    properties: MutableMap<Path, MapSourceTypedProperty>,
-    onProperty: (KSPropertyDeclaration) -> MapSourceTypedProperty?,
-    onFunction: (KSFunctionDeclaration) -> MapSourceTypedProperty?
-): MapSourceTypedProperty? {
+    properties: MutableMap<Path, MapActionSourceTypedProperty>,
+    onProperty: (KSPropertyDeclaration) -> MapActionSourceTypedProperty?,
+    onFunction: (KSFunctionDeclaration) -> MapActionSourceTypedProperty?
+): MapActionSourceTypedProperty? {
     val key = name.toPath()
     var find = properties[key]
     if (find == null) {

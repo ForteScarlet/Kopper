@@ -18,6 +18,7 @@ package love.forte.kopper.processor.def
 
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
+import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 
 
 /**
@@ -35,5 +36,8 @@ internal data class MapperActionDef(
     val mapArgs: List<MapArgs>,
     val sources: List<MapperActionSourceDef>,
     val target: MapperActionTargetDef,
-
+    /**
+     * The super source function.
+     */
+    val sourceFun: KSFunctionDeclaration?
     )

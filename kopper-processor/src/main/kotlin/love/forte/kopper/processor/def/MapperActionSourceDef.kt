@@ -36,8 +36,5 @@ internal data class MapperActionSourceDef(
      */
     val incoming: MapActionIncoming,
     val isMain: Boolean,
-) {
-    // find property
-
-}
+)
 

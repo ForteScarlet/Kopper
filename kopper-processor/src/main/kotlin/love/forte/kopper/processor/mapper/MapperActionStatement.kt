@@ -14,18 +14,16 @@
  * limitations under the License.
  */
 
-package love.forte.kopper.processor.def
+package love.forte.kopper.processor.mapper
 
-import com.google.devtools.ksp.symbol.KSType
-import love.forte.kopper.processor.util.isNullable
 
-internal data class MapActionIncoming(
+/**
+ *
+ * @author ForteScarlet
+ */
+internal interface MapperActionStatement {
     /**
-     * The parameter name or `null` if it's a receiver.
+     * Emit current ActionStatement to [writer].
      */
-    val name: String?,
-    val type: KSType,
-) {
-    val nullable: Boolean
-        get() = type.nullability.isNullable
+    fun emit(writer: MapperMapSetWriter, index: Int)
 }

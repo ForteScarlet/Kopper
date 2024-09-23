@@ -16,18 +16,14 @@
 
 package love.forte.kopper.processor.mapper
 
-import com.google.devtools.ksp.getClassDeclarationByName
-import com.google.devtools.ksp.processing.Resolver
-import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
+import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
-import love.forte.kopper.annotation.Map
-import love.forte.kopper.processor.def.MapArgs
-import love.forte.kopper.processor.util.hasAnno
+import love.forte.kopper.processor.def.MapperActionDef
+import java.util.LinkedList
 
 internal data class MapperMapSetFunInfo(
     val name: String,
@@ -69,135 +65,134 @@ internal enum class MapperMapSetFunParameterType {
  * @author ForteScarlet
  */
 internal class MapperAction internal constructor(
-    val environment: SymbolProcessorEnvironment,
-    val resolver: Resolver,
-    val func: MapperMapSetFunInfo,
-    val mapArgs: List<MapArgs>,
-    val sources: MutableList<MapActionSource> = mutableListOf(),
-    val maps: MutableList<MapperMap> = mutableListOf(),
-    /**
-     * If a sub mapSet
-     */
-    val parentProperty: MapSourceProperty? = null,
+    val def: MapperActionDef,
+    val generator: MapperActionGenerator,
 ) {
-    constructor(
-        environment: SymbolProcessorEnvironment,
-        resolver: Resolver,
-        sourceFun: KSFunctionDeclaration,
-        mapArgs: List<MapArgs>,
-        sources: MutableList<MapActionSource> = mutableListOf(),
-        maps: MutableList<MapperMap> = mutableListOf(),
-        parentProperty: MapSourceProperty? = null,
-    ) : this(
-        environment = environment,
-        resolver = resolver,
-        func = MapperMapSetFunInfo(
-            name = sourceFun.simpleName.asString(),
-            receiver = sourceFun.extensionReceiver?.resolve()?.let {
-                MapperMapSetFunReceiver(
-                    type = it,
-                    parameterType = if (
-                        it.hasAnno(resolver.getClassDeclarationByName<Map.Target>()!!.asStarProjectedType())
-                    ) {
-                        MapperMapSetFunParameterType.TARGET
-                    } else {
-                        MapperMapSetFunParameterType.SOURCE
-                    }
-                )
-            },
-            parameters = sourceFun.parameters.map { p ->
-                MapperMapSetFunParameter(
-                    name = p.name?.asString(),
-                    type = p.type.resolve(),
-                    parameterType = if (
-                        p.hasAnno(resolver.getClassDeclarationByName<Map.Target>()!!.asStarProjectedType())
-                    ) {
-                        MapperMapSetFunParameterType.TARGET
-                    } else {
-                        MapperMapSetFunParameterType.SOURCE
-                    }
-                )
-            },
-            returns = sourceFun.returnType?.resolve()?.takeIf { !resolver.builtIns.unitType.isAssignableFrom(it) }
-        ),
-        mapArgs = mapArgs,
-        sources = sources,
-        maps = maps,
-        parentProperty = parentProperty,
-    ) {
-        this.sourceFun = sourceFun
-    }
+    var funBuilder: FunSpec.Builder = FunSpec.builder(def.name)
+
+    val maps: LinkedList<MapperMap> = LinkedList()
 
     lateinit var targetClassDeclaration: KSClassDeclaration
-    lateinit var target: MapTarget
-    var sourceFun: KSFunctionDeclaration? = null
-        private set
-
+    lateinit var target: MapActionTarget
     var subMapperSets = mutableListOf<MapperAction>()
 
-    val ignoreTargets = mapArgs
-        .filter { it.ignore }
-        .mapTo(mutableSetOf()) { it.target }
-
-    fun emit(writer: MapperWriter) {
-        val funName = func.name
-        val funBuilder = FunSpec.builder(func.name)
-        if (sourceFun != null) {
-            funBuilder.addModifiers(KModifier.OVERRIDE)
-        } else {
-            funBuilder.addModifiers(KModifier.PRIVATE)
-        }
-
-        // parameters
-        func.receiver?.also { funBuilder.receiver(it.type.toTypeName()) }
-        func.parameters.forEach { funBuilder.addParameter(it.name!!, it.type.toTypeName()) }
-        // return
-        func.returns?.toTypeName()?.also { funBuilder.returns(it) }
-
-        val setWriter = writer.newMapSetWriter(funBuilder)
-
-        // init target and emit maps.
-        // target.emitInit(setWriter)
-        target.emitInitBegin(setWriter)
-        var finished = false
-
-        maps.sortedByDescending { it is ConstructorMapperMap }
-            .forEachIndexed { index, map ->
-                if (!finished && map !is ConstructorMapperMap) {
-                    target.emitInitFinish(setWriter)
-                    finished = true
-                }
-                map.emit(setWriter, index)
-            }
-
-        if (!finished) {
-            target.emitInitFinish(setWriter)
-        }
-
-        // do return
-        if (func.returns != null && func.returns != resolver.builtIns.unitType) {
-            setWriter.addStatement("return %L", target.name)
-        }
-
-        val key = MapperMapSetKey(
-            name = funName,
-            target = target,
-            sources = sources.toSet()
-        )
-
-        val info = MapperMapSetInfo(
-            funSpec = funBuilder,
-            isAncillary = false
-        )
-
-        writer.add(key, info)
-
-        // subs
-        subMapperSets.forEach { it.emit(writer) }
+    fun prepare() {
+        generator.actions.add(this)
+        // 定义此函数
+        resolveCurrentFunDeclaration()
+        // 预处理所有的 map，分离出可能存在的 sub action 并同样注册、prepare
+        prepareMaps()
     }
 
+    fun generate() {
+
+        TODO("generate from MapperAction")
+
+    }
+
+    private fun resolveCurrentFunDeclaration() {
+        val sourceFun = def.sourceFun
+        if (sourceFun != null) {
+            funBuilder.addModifiers(KModifier.OVERRIDE)
+            // parameters,
+            // parameters
+            sourceFun.extensionReceiver?.also { funBuilder.receiver(it.toTypeName()) }
+            sourceFun.parameters.forEach { funBuilder.addParameter(it.name!!.asString(), it.type.toTypeName()) }
+            // return
+            sourceFun.returnType?.toTypeName()?.also { funBuilder.returns(it) }
+        } else {
+            funBuilder.addModifiers(KModifier.PRIVATE)
+            // main first, source after,
+            // target last
+            def.sources.sortedByDescending { it.isMain }.forEach { sourceDef ->
+                funBuilder.addParameter(
+                    sourceDef.incoming.name ?: "_main_this",
+                    type = sourceDef.incoming.type.toTypeName(),
+                )
+            }
+
+            if (def.target.incoming != null) {
+                funBuilder.addParameter(
+                    name = def.target.incoming.name ?: "_target_this",
+                    type = def.target.incoming.type.toTypeName(),
+                )
+            }
+
+            if (def.target.returns) {
+                funBuilder.returns(def.target.declaration.toClassName())
+            }
+        }
+    }
+
+    private fun prepareMaps() {
+        val mapArgsWithTargetPath = def.mapArgs.toMutableList().associateBy { it.target.toPath() }
+
+        val rootTargets = mapArgsWithTargetPath.filterTo(mutableMapOf()) { (k, _) -> !k.hasChild() }
+        val deepTargets = mapArgsWithTargetPath.filterTo(mutableMapOf()) { (k, _) -> k.hasChild() }
+
+        for ((path, mapArg) in rootTargets) {
+            // 获取 target 属性
+            // 检测类型，如果是 deep 类型，添加到 deepTargets 并跳过
+            // 检测 target 是可变属性或require
+
+        }
+
+        // TODO
+        // 直接单属性映射, 以 target 为准
+        // 剩余的 target 从 main 中找
+
+        // 再剩下有层级的、或类型不是可以直接转化的，将它们处理为sub action,
+        // 先寻找现有的、可以完全匹配的，
+        //   完全匹配，指那个
+        // 找不到就请求创建一个新的
+
+
+    }
+
+    // val setWriter = writer.newMapSetWriter(funBuilder)
+
+    // init target and emit maps.
+    // target.emitInit(setWriter)
+
+    // target.emitInitBegin(setWriter)
+    // var finished = false
+    //
+    // maps.sortedByDescending { it is ConstructorMapperMap }
+    //     .forEachIndexed { index, map ->
+    //         if (!finished && map !is ConstructorMapperMap) {
+    //             target.emitInitFinish(setWriter)
+    //             finished = true
+    //         }
+    //         map.emit(setWriter, index)
+    //     }
+    //
+    // if (!finished) {
+    //     target.emitInitFinish(setWriter)
+    // }
+    //
+    // // do return
+    // if (func.returns != null && func.returns != resolver.builtIns.unitType) {
+    //     setWriter.addStatement("return %L", target.name)
+    // }
+    //
+    // val key = MapperMapSetKey(
+    //     name = funName,
+    //     target = target,
+    //     sources = sources.toSet()
+    // )
+    //
+    // val info = MapperMapSetInfo(
+    //     funSpec = funBuilder,
+    //     isAncillary = false
+    // )
+    //
+    // writer.add(key, info)
+    //
+    // // subs
+    // subMapperSets.forEach { it.emit(writer) }
+
     override fun toString(): String {
-        return "MapperMapSet(func=$func, mapArgs=$mapArgs, sourceFun=$sourceFun, parentProperty=$parentProperty)"
+        return "MapperAction(def=$def)"
     }
 
 

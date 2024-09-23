@@ -23,15 +23,15 @@ import com.squareup.kotlinpoet.CodeBlock
 /**
  * A single map in [MapperAction].
  */
-internal sealed interface MapperMap {
+internal sealed interface MapperMap : MapperActionStatement {
     /**
      * Emit current Map to [writer].
      */
-    fun emit(writer: MapperMapSetWriter, index: Int)
+    override fun emit(writer: MapperMapSetWriter, index: Int)
 }
 
 internal interface ConstructorMapperMap : MapperMap {
-    val target: MapTarget
+    val target: MapActionTarget
     val targetParameter: KSValueParameter
 }
 
@@ -40,8 +40,8 @@ internal interface ConstructorMapperMap : MapperMap {
  */
 internal data class SourceConstructorMapperMap(
     val source: MapActionSource,
-    val sourceProperty: MapSourceProperty,
-    override val target: MapTarget,
+    val sourceProperty: MapActionSourceProperty,
+    override val target: MapActionTarget,
     override val targetParameter: KSValueParameter,
     val nullableParameter: String?,
 ) : ConstructorMapperMap {
@@ -76,7 +76,7 @@ internal data class SourceConstructorMapperMap(
 internal data class EvalConstructorMapperMap(
     val eval: String,
     val evalNullable: Boolean,
-    override val target: MapTarget,
+    override val target: MapActionTarget,
     override val targetParameter: KSValueParameter,
     val nullableParameter: String?,
 ) : ConstructorMapperMap {
@@ -104,8 +104,8 @@ internal data class EvalConstructorMapperMap(
 
 
 internal interface PropertyMapperMap : MapperMap {
-    val target: MapTarget
-    val targetProperty: MapTargetProperty
+    val target: MapActionTarget
+    val targetProperty: MapActionTargetProperty
 }
 
 /**
@@ -117,9 +117,9 @@ internal data class SourcePropertyMapperMap(
      * the source will be the main source.
      */
     val source: MapActionSource,
-    val sourceProperty: MapSourceProperty,
-    override val target: MapTarget,
-    override val targetProperty: MapTargetProperty,
+    val sourceProperty: MapActionSourceProperty,
+    override val target: MapActionTarget,
+    override val targetProperty: MapActionTargetProperty,
 ) : PropertyMapperMap {
     override fun emit(writer: MapperMapSetWriter, index: Int) {
         targetProperty.emit(writer, sourceProperty.read())
@@ -129,8 +129,8 @@ internal data class SourcePropertyMapperMap(
 internal data class EvalPropertyMapperMap(
     val eval: String,
     val evalNullable: Boolean,
-    override val target: MapTarget,
-    override val targetProperty: MapTargetProperty,
+    override val target: MapActionTarget,
+    override val targetProperty: MapActionTargetProperty,
 ) : PropertyMapperMap {
     override fun emit(writer: MapperMapSetWriter, index: Int) {
         val read = PropertyRead(name = "eval", CodeBlock.of(eval), nullable = evalNullable)

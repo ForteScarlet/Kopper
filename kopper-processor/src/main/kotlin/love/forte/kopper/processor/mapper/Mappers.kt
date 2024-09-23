@@ -24,6 +24,7 @@ import com.google.devtools.ksp.symbol.*
 import love.forte.kopper.annotation.Map
 import love.forte.kopper.annotation.PropertyType
 import love.forte.kopper.processor.def.MapArgs
+import love.forte.kopper.processor.def.MapperActionDef
 import love.forte.kopper.processor.def.resolveMapperArgs
 import love.forte.kopper.processor.def.resolveToMapArgs
 import love.forte.kopper.processor.util.asClassDeclaration
@@ -61,10 +62,10 @@ internal fun resolveToMapper(
     )
 
     return Mapper(
-        environment = environment,
-        resolver = resolver,
-        targetName = mapperName,
-        targetPackage = mapperArgs.packageName,
+        // environment = environment,
+        // resolver = resolver,
+        // targetName = mapperName,
+        // targetPackage = mapperArgs.packageName,
         mapSets = mapSet,
         superType = declaration,
         genTarget = mapperArgs.genTarget,
@@ -103,7 +104,7 @@ internal fun KSFunctionDeclaration.resolveToMapSet(
     environment: SymbolProcessorEnvironment,
     resolver: Resolver,
     mapAnnoType: KSClassDeclaration,
-    parentProperty: MapSourceProperty? = null,
+    parentProperty: MapActionSourceProperty? = null,
 ): MapperAction {
     val mapArgList = annotations
         .filter {
@@ -136,17 +137,15 @@ internal fun KSFunctionDeclaration.resolveToMapSet(
 
 
 internal fun resolveMapSet(
-    environment: SymbolProcessorEnvironment,
-    resolver: Resolver,
+    def: MapperActionDef,
     mapArgList: List<MapArgs>,
     func: MapperMapSetFunInfo,
     sources: List<MapActionSource>,
-    parentProperty: MapSourceProperty? = null,
+    parentProperty: MapActionSourceProperty? = null,
     prefixPath: Path? = null,
 ): MapperAction {
     val mapSet = MapperAction(
-        environment = environment,
-        resolver = resolver,
+        def,
         func = func,
         mapArgs = mapArgList,
         parentProperty = parentProperty,
@@ -213,7 +212,7 @@ internal fun MapperAction.resourceTargets(
 
     this.targetClassDeclaration = targetClassDeclaration
 
-    val targetMap = mutableMapOf<Path, MapSourceProperty>()
+    val targetMap = mutableMapOf<Path, MapActionSourceProperty>()
 
     val mainSource = sources.find { it.isMain }
 
@@ -235,7 +234,7 @@ internal fun MapperAction.resourceTargets(
 
         // 是结构化目标，且没有eval，
 
-        val targetSourceProperty: MapSourceProperty = if (targetArg != null) {
+        val targetSourceProperty: MapActionSourceProperty = if (targetArg != null) {
             // 有明確指定的 @Map 目标，用 arg.source
             val argSourceName = targetArg.sourceName
             val targetSource =
@@ -245,7 +244,7 @@ internal fun MapperAction.resourceTargets(
 
             // 如果eval有效, 构建 eval property
             if (targetArg.isEvalValid) {
-                EvalSourceProperty(
+                EvalActionSourceProperty(
                     name = "${name}_eval",
                     source = this.sources.first { it.isMain },
                     nullable = targetArg.evalNullable,
@@ -314,14 +313,14 @@ internal fun MapperAction.resourceTargets(
     val mapTarget = when {
         // is receiver
         receiver != null && receiver.nullability == Nullability.NOT_NULL -> {
-            MapTarget.create(
+            MapActionTarget.create(
                 mapSet = this,
                 receiver = receiver
             )
         }
 
         parameter != null && parameter.type.nullability == Nullability.NOT_NULL -> {
-            MapTarget.create(
+            MapActionTarget.create(
                 mapSet = this,
                 parameterName = parameter.name!!,
                 type = parameter.type
@@ -331,8 +330,8 @@ internal fun MapperAction.resourceTargets(
         else -> {
             // return type
             val returnType = func.returns!!
-            MapTarget.create(
-                mapSet = this,
+            MapActionTarget.create(
+                action = this,
                 type = returnType,
                 targetSourceMap = targetMap,
                 nullableParameter = when {
@@ -355,8 +354,8 @@ internal inline fun MapperAction.resolveSubMapSetProperty(
     path: Path,
     targetArg: MapArgs?,
     targetArgs: MutableMap<String, MapArgs>,
-    getTargetReceiverProperty: () -> MapSourceTypedProperty
-): InternalMapSetSourceProperty {
+    getTargetReceiverProperty: () -> MapActionSourceTypedProperty
+): InternalMapSetActionSourceProperty {
 
     val subTargetNameArgs = mutableMapOf<String, MapArgs>()
     val subSources = mutableSetOf<MapActionSource>()
@@ -436,7 +435,7 @@ internal inline fun MapperAction.resolveSubMapSetProperty(
 
     this.subMapperSets.add(internalMapSet)
 
-    return InternalMapSetSourceProperty(
+    return InternalMapSetActionSourceProperty(
         source = mainPropertySource,
         type = property.type.resolve(), // propertySource.type,
         name = internalMapSet.func.name,
@@ -489,7 +488,7 @@ internal fun MapperAction.resolveSources(
 internal fun MapperAction.resolveMaps() {
     data class PathPropertyEntry(
         val path: Path,
-        val property: MapSourceProperty,
+        val property: MapActionSourceProperty,
     )
 
     val topLevelTargets = mutableMapOf<String, PathPropertyEntry>()
@@ -525,7 +524,7 @@ internal fun MapperAction.resolveMaps() {
 private fun MapperAction.resolveSingleTopTarget(
     target: String,
     path: Path,
-    property: MapSourceProperty
+    property: MapActionSourceProperty
 ) {
     // ignore, eval, etc.
     val mapArgs = mapArgs.find { it.target == target } // single target.

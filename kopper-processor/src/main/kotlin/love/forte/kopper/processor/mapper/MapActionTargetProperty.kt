@@ -24,8 +24,8 @@ import love.forte.kopper.annotation.PropertyType
 /**
  * A property for mapping target.
  */
-internal interface MapTargetProperty {
-    val target: MapTarget
+internal interface MapActionTargetProperty {
+    val target: MapActionTarget
 
     /**
      * Name of target property.
@@ -33,7 +33,7 @@ internal interface MapTargetProperty {
     val name: String
 
     /**
-     * The [MapTargetProperty]'s [PropertyType].
+     * The [MapActionTargetProperty]'s [PropertyType].
      * - If it is a property, it must have a `var` property or a constructor property.
      * - If it is a function, it must have only one parameter, e.g. `fun prop(value: AType)`.
      *   The `set` prefix is disregarded and its name can be specified manually and directly.
@@ -58,12 +58,12 @@ internal interface MapTargetProperty {
 }
 
 
-internal data class MapTargetPropertyImpl(
-    override val target: MapTarget,
+internal data class MapActionTargetPropertyImpl(
+    override val target: MapActionTarget,
     override val name: String,
     override val propertyType: PropertyType,
     override val type: KSType,
-) : MapTargetProperty {
+) : MapActionTargetProperty {
     override fun emit(writer: MapperMapSetWriter, read: PropertyRead) {
         val propCon = if (target.nullable) "?." else "."
         val sourceCode = read.codeWithCast(writer.mapperWriter, type)

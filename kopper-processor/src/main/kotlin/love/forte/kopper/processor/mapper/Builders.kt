@@ -37,7 +37,7 @@ internal data class MapperMapSetInfo(
  */
 internal data class MapperMapSetKey(
     val name: String,
-    val target: MapTarget,
+    val target: MapActionTarget,
     val sources: Set<MapActionSource>,
 )
 
