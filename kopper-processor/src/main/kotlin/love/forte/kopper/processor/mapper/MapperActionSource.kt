@@ -34,7 +34,7 @@ internal data class MapperActionSource(
     var type: KSType,
 ) {
     private val logger: KSPLogger
-        get() = action.environment.logger
+        get() = action.def.environment.logger
 
     val nullable: Boolean
         get() = type.nullability != Nullability.NOT_NULL
@@ -181,7 +181,7 @@ private inline fun property0(
     if (find == null) {
         find = findProperty(
             name = name,
-            declaration = from,
+            declaration = from.declaration,
             propertyType = propertyType,
             onProperty = onProperty,
             onFunction = onFunction
