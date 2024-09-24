@@ -27,11 +27,11 @@ internal sealed interface MapperMap : MapperActionStatement {
     /**
      * Emit current Map to [writer].
      */
-    override fun emit(writer: MapperMapSetWriter, index: Int)
+    override fun emit(writer: MapperActionWriter, index: Int)
 }
 
 internal interface ConstructorMapperMap : MapperMap {
-    val target: MapActionTarget
+    val target: MapperActionTarget
     val targetParameter: KSValueParameter
 }
 
@@ -39,13 +39,13 @@ internal interface ConstructorMapperMap : MapperMap {
  * Required properties' mapper map.
  */
 internal data class SourceConstructorMapperMap(
-    val source: MapActionSource,
+    val source: MapperActionSource,
     val sourceProperty: MapActionSourceProperty,
-    override val target: MapActionTarget,
+    override val target: MapperActionTarget,
     override val targetParameter: KSValueParameter,
     val nullableParameter: String?,
 ) : ConstructorMapperMap {
-    override fun emit(writer: MapperMapSetWriter, index: Int) {
+    override fun emit(writer: MapperActionWriter, index: Int) {
         // parameter = source,
         val sourceRead = sourceProperty.read()
         val code = CodeBlock.builder()
@@ -76,11 +76,11 @@ internal data class SourceConstructorMapperMap(
 internal data class EvalConstructorMapperMap(
     val eval: String,
     val evalNullable: Boolean,
-    override val target: MapActionTarget,
+    override val target: MapperActionTarget,
     override val targetParameter: KSValueParameter,
     val nullableParameter: String?,
 ) : ConstructorMapperMap {
-    override fun emit(writer: MapperMapSetWriter, index: Int) {
+    override fun emit(writer: MapperActionWriter, index: Int) {
         val eval = CodeBlock.builder()
             .apply {
                 add("«")
@@ -104,7 +104,7 @@ internal data class EvalConstructorMapperMap(
 
 
 internal interface PropertyMapperMap : MapperMap {
-    val target: MapActionTarget
+    val target: MapperActionTarget
     val targetProperty: MapActionTargetProperty
 }
 
@@ -116,12 +116,12 @@ internal data class SourcePropertyMapperMap(
      * The source. If the source is an eval expression,
      * the source will be the main source.
      */
-    val source: MapActionSource,
+    val source: MapperActionSource,
     val sourceProperty: MapActionSourceProperty,
-    override val target: MapActionTarget,
+    override val target: MapperActionTarget,
     override val targetProperty: MapActionTargetProperty,
 ) : PropertyMapperMap {
-    override fun emit(writer: MapperMapSetWriter, index: Int) {
+    override fun emit(writer: MapperActionWriter, index: Int) {
         targetProperty.emit(writer, sourceProperty.read())
     }
 }
@@ -129,10 +129,10 @@ internal data class SourcePropertyMapperMap(
 internal data class EvalPropertyMapperMap(
     val eval: String,
     val evalNullable: Boolean,
-    override val target: MapActionTarget,
+    override val target: MapperActionTarget,
     override val targetProperty: MapActionTargetProperty,
 ) : PropertyMapperMap {
-    override fun emit(writer: MapperMapSetWriter, index: Int) {
+    override fun emit(writer: MapperActionWriter, index: Int) {
         val read = PropertyRead(name = "eval", CodeBlock.of(eval), nullable = evalNullable)
         targetProperty.emit(writer, read)
     }

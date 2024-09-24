@@ -44,7 +44,7 @@ internal class MapperGenerator(
 }
 
 
-internal class MapperActionGenerator(
+internal class MapperActionsGenerator(
     val mapperGenerator: MapperGenerator,
 ) {
     // actions, with funSpec.Builder

@@ -25,7 +25,7 @@ import love.forte.kopper.annotation.PropertyType
  * A property for mapping target.
  */
 internal interface MapActionTargetProperty {
-    val target: MapActionTarget
+    val target: MapperActionTarget
 
     /**
      * Name of target property.
@@ -54,17 +54,17 @@ internal interface MapActionTargetProperty {
     /**
      * emit a property setter with [read] into [writer]
      */
-    fun emit(writer: MapperMapSetWriter, read: PropertyRead)
+    fun emit(writer: MapperActionWriter, read: PropertyRead)
 }
 
 
 internal data class MapActionTargetPropertyImpl(
-    override val target: MapActionTarget,
+    override val target: MapperActionTarget,
     override val name: String,
     override val propertyType: PropertyType,
     override val type: KSType,
 ) : MapActionTargetProperty {
-    override fun emit(writer: MapperMapSetWriter, read: PropertyRead) {
+    override fun emit(writer: MapperActionWriter, read: PropertyRead) {
         val propCon = if (target.nullable) "?." else "."
         val sourceCode = read.codeWithCast(writer.mapperWriter, type)
         val sourceNullable = read.nullable

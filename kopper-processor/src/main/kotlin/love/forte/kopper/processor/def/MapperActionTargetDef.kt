@@ -41,6 +41,10 @@ internal data class MapperActionTargetDef(
      * True if return is required
      */
     val returns: Boolean,
+    /**
+     * If [returns] can be null.
+     */
+    val nullable: Boolean,
 ) {
     // find property
 

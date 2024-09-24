@@ -25,5 +25,5 @@ internal interface MapperActionStatement {
     /**
      * Emit current ActionStatement to [writer].
      */
-    fun emit(writer: MapperMapSetWriter, index: Int)
+    fun emit(writer: MapperActionWriter, index: Int)
 }

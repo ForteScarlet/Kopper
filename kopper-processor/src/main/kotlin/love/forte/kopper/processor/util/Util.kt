@@ -19,7 +19,6 @@ package love.forte.kopper.processor.util
 import com.google.devtools.ksp.processing.KSBuiltIns
 import com.google.devtools.ksp.symbol.*
 import love.forte.kopper.annotation.PropertyType
-import java.util.logging.Logger
 
 internal const val EVAL: String = "eval"
 
@@ -40,30 +39,38 @@ internal fun String.evalExpressionValue(): String {
 
 internal inline fun <T> findProperty(
     name: String,
-    type: KSType,
+    declaration: KSDeclaration,
     propertyType: PropertyType,
     onProperty: (KSPropertyDeclaration) -> T?,
     onFunction: (KSFunctionDeclaration) -> T?,
 ): T? {
     return when (propertyType) {
-        PropertyType.PROPERTY -> findPropProperty(name, type, onProperty)
-        PropertyType.FUNCTION -> findFunProperty(name, type, onFunction)
-        PropertyType.AUTO -> findPropProperty(name, type, onProperty)
-            ?: findFunProperty(name, type, onFunction)
+        PropertyType.PROPERTY -> findPropProperty(name, declaration, onProperty)
+        PropertyType.FUNCTION -> findFunProperty(name, declaration, onFunction)
+        PropertyType.AUTO -> findPropProperty(name, declaration, onProperty)
+            ?: findFunProperty(name, declaration, onFunction)
     }
 }
 
 
-internal inline fun <T> findPropProperty(name: String, type: KSType, block: (KSPropertyDeclaration) -> T?): T? {
-    return type.declaration.asClassDeclaration()
+internal inline fun <T> findPropProperty(
+    name: String,
+    declaration: KSDeclaration,
+    block: (KSPropertyDeclaration) -> T?
+): T? {
+    return declaration.asClassDeclaration()
         ?.getAllProperties()
         // 返回值是 type
         ?.firstOrNull { it.simpleName.asString() == name }
         ?.let(block)
 }
 
-internal inline fun <T> findFunProperty(name: String, type: KSType, block: (KSFunctionDeclaration) -> T?): T? {
-    return type.declaration.asClassDeclaration()
+internal inline fun <T> findFunProperty(
+    name: String,
+    declaration: KSDeclaration,
+    block: (KSFunctionDeclaration) -> T?
+): T? {
+    return declaration.asClassDeclaration()
         ?.getAllFunctions()
         // 没有参数，有返回值
         ?.filter { it.simpleName.asString() == name }
@@ -127,7 +134,7 @@ private const val U_SHORT_NAME = "UShort"
 private const val U_INT_NAME = "UInt"
 private const val U_LONG_NAME = "ULong"
 
-private fun KSDeclaration.isUByte(): Boolean = 
+private fun KSDeclaration.isUByte(): Boolean =
     packageName.asString() == KT_NUMBER_PACKAGE && simpleName.asString() == U_BYTE_NAME
 
 private fun KSDeclaration.isUShort(): Boolean =

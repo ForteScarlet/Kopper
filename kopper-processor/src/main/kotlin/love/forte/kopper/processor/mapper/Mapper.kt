@@ -63,7 +63,7 @@ internal class Mapper(
     }
 
     fun generate() {
-        val actionGenerator = MapperActionGenerator(generator)
+        val actionGenerator = MapperActionsGenerator(generator)
 
         val actions = def.declarationActions.map { def ->
             MapperAction(def = def, generator = actionGenerator).also { it.prepare() }

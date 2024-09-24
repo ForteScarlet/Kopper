@@ -24,6 +24,7 @@ import com.google.devtools.ksp.symbol.*
 import love.forte.kopper.annotation.Map
 import love.forte.kopper.processor.util.asClassDeclaration
 import love.forte.kopper.processor.util.hasAnno
+import love.forte.kopper.processor.util.isNullable
 import java.util.*
 
 
@@ -224,7 +225,8 @@ internal fun MapperDefResolveContext.resolveActionTarget(
                 name = null,
                 type = receiverType
             ),
-            returns = returnType != null
+            returns = returnType != null,
+            nullable = returnType != null && returnType.nullability.isNullable
         )
     }
 
@@ -250,7 +252,8 @@ internal fun MapperDefResolveContext.resolveActionTarget(
                 name = targetParameter.name?.asString(), // TODO name?
                 type = parameterType
             ),
-            returns = returnType != null
+            returns = returnType != null,
+            nullable = returnType != null && returnType.nullability.isNullable
         )
     }
 
@@ -261,7 +264,11 @@ internal fun MapperDefResolveContext.resolveActionTarget(
 
     val returnDeclaration = returnType.declaration.asClassDeclaration()
 
-    check(returnDeclaration != null && !returnDeclaration.isAbstract()) {
+    check(
+        returnDeclaration != null
+            && returnDeclaration.classKind == ClassKind.CLASS
+            && !returnDeclaration.isAbstract()
+    ) {
         "Return type can not be abstract and must be a constructable class."
     }
 
@@ -270,7 +277,8 @@ internal fun MapperDefResolveContext.resolveActionTarget(
         resolver = resolver,
         declaration = returnDeclaration,
         incoming = null,
-        returns = true
+        returns = true,
+        nullable = returnType.nullability.isNullable,
     )
 }
 

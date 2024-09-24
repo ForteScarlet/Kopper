@@ -140,7 +140,7 @@ internal fun resolveMapSet(
     def: MapperActionDef,
     mapArgList: List<MapArgs>,
     func: MapperMapSetFunInfo,
-    sources: List<MapActionSource>,
+    sources: List<MapperActionSource>,
     parentProperty: MapActionSourceProperty? = null,
     prefixPath: Path? = null,
 ): MapperAction {
@@ -313,14 +313,14 @@ internal fun MapperAction.resourceTargets(
     val mapTarget = when {
         // is receiver
         receiver != null && receiver.nullability == Nullability.NOT_NULL -> {
-            MapActionTarget.create(
+            MapperActionTarget.create(
                 mapSet = this,
                 receiver = receiver
             )
         }
 
         parameter != null && parameter.type.nullability == Nullability.NOT_NULL -> {
-            MapActionTarget.create(
+            MapperActionTarget.create(
                 mapSet = this,
                 parameterName = parameter.name!!,
                 type = parameter.type
@@ -330,7 +330,7 @@ internal fun MapperAction.resourceTargets(
         else -> {
             // return type
             val returnType = func.returns!!
-            MapActionTarget.create(
+            MapperActionTarget.create(
                 action = this,
                 type = returnType,
                 targetSourceMap = targetMap,
@@ -348,7 +348,7 @@ internal fun MapperAction.resourceTargets(
 }
 
 internal inline fun MapperAction.resolveSubMapSetProperty(
-    mainSource: MapActionSource?,
+    mainSource: MapperActionSource?,
     property: KSPropertyDeclaration,
     name: String,
     path: Path,
@@ -358,7 +358,7 @@ internal inline fun MapperAction.resolveSubMapSetProperty(
 ): InternalMapSetActionSourceProperty {
 
     val subTargetNameArgs = mutableMapOf<String, MapArgs>()
-    val subSources = mutableSetOf<MapActionSource>()
+    val subSources = mutableSetOf<MapperActionSource>()
     val subFunParameters = mutableListOf<String>()
 
     for ((key, value) in targetArgs) {
@@ -397,7 +397,7 @@ internal inline fun MapperAction.resolveSubMapSetProperty(
     // 去 source 找同名同路径的
     val targetReceiverProperty = getTargetReceiverProperty()
 
-    val mainPropertySource = MapActionSource(
+    val mainPropertySource = MapperActionSource(
         this,
         isMain = true,
         name = "this",
@@ -431,7 +431,7 @@ internal inline fun MapperAction.resolveSubMapSetProperty(
         parentProperty = targetReceiverProperty,
     )
 
-    internalMapSetSources.forEach { it.sourceMapSet = internalMapSet }
+    internalMapSetSources.forEach { it.action = internalMapSet }
 
     this.subMapperSets.add(internalMapSet)
 
@@ -457,8 +457,8 @@ internal fun MapperAction.resolveSources(
         ?.takeUnless { it.isTarget }
         ?.also {
             sources.add(
-                MapActionSource(
-                    sourceMapSet = this,
+                MapperActionSource(
+                    action = this,
                     name = "this",
                     type = it.type
                 )
@@ -469,8 +469,8 @@ internal fun MapperAction.resolveSources(
         // not target
         if (!parameter.type.hasAnno(mapTargetType.asStarProjectedType())) {
             sources.add(
-                MapActionSource(
-                    sourceMapSet = this,
+                MapperActionSource(
+                    action = this,
                     name = parameter.name ?: "?ERROR",
                     type = parameter.type
                 )

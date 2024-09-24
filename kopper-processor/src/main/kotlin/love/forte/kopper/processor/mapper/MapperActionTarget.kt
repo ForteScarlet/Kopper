@@ -23,13 +23,16 @@ import com.google.devtools.ksp.symbol.Nullability
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.ksp.toClassName
 import love.forte.kopper.annotation.PropertyType
+import love.forte.kopper.processor.def.MapperActionTargetDef
 import love.forte.kopper.processor.util.asClassDeclaration
 import love.forte.kopper.processor.util.findPropProperty
 
-internal sealed class MapActionTarget(
-    val name: String,
-    val type: KSType,
+internal sealed class MapperActionTarget(
+    val def: MapperActionTargetDef,
+    val generator: MapperActionsGenerator,
 ) {
+    // TODO Local readable variable name
+    val name: String = ""
     val targetSourceMap: MutableMap<Path, MapActionSourceProperty> = mutableMapOf()
 
     /**
@@ -44,7 +47,7 @@ internal sealed class MapActionTarget(
     fun property(name: String): MapActionTargetProperty? {
         return findPropProperty(
             name = name,
-            type = type,
+            declaration = def.declaration,
         ) {
             MapActionTargetPropertyImpl(
                 target = this,
@@ -55,13 +58,13 @@ internal sealed class MapActionTarget(
         }
     }
 
-    abstract fun emitInitBegin(writer: MapperMapSetWriter)
+    abstract fun emitInitBegin(writer: MapperActionWriter)
 
-    abstract fun emitInitFinish(writer: MapperMapSetWriter)
+    abstract fun emitInitFinish(writer: MapperActionWriter)
 
     companion object {
         /**
-         * Create a [MapActionTarget] with return [type] only.
+         * Create a [MapperActionTarget] with return [type] only.
          *
          */
         internal fun create(
@@ -69,7 +72,7 @@ internal sealed class MapActionTarget(
             type: KSType,
             targetSourceMap: MutableMap<Path, MapActionSourceProperty>,
             nullableParameter: String?,
-        ): MapActionTarget {
+        ): MapperActionTarget {
             val name = "__target"
 
             // TODO check type?
@@ -83,7 +86,7 @@ internal sealed class MapActionTarget(
                 ?: error("Type $declaration must have a primary constructor.")
             // declaration.getConstructors().firstOrNull()
 
-            val target = InitialRequiredMapTarget(
+            val target = InitialRequiredMapperTarget(
                 mapSet = action,
                 name = name,
                 type = type,
@@ -136,15 +139,15 @@ internal sealed class MapActionTarget(
         }
 
         /**
-         * Create a [MapActionTarget] with included [KSValueParameter]
+         * Create a [MapperActionTarget] with included [KSValueParameter]
          *
          */
         internal fun create(
             mapSet: MapperAction,
             parameterName: String,
             type: KSType,
-        ): MapActionTarget {
-            return IncludedParameterMapTarget(
+        ): MapperActionTarget {
+            return IncludedParameterMapperTarget(
                 mapSet = mapSet,
                 name = parameterName,
                 type = type,
@@ -152,13 +155,13 @@ internal sealed class MapActionTarget(
         }
 
         /**
-         * Create a [MapActionTarget] with included [receiver]
+         * Create a [MapperActionTarget] with included [receiver]
          *
          */
         internal fun create(
             mapSet: MapperAction,
             receiver: KSType,
-        ): MapActionTarget {
+        ): MapperActionTarget {
             return ReceiverMapTarget(
                 mapSet = mapSet,
                 name = "this",
@@ -168,25 +171,25 @@ internal sealed class MapActionTarget(
     }
 }
 
-private class IncludedParameterMapTarget(
+private class IncludedParameterMapperTarget(
     mapSet: MapperAction,
     name: String,
     type: KSType,
-) : MapActionTarget(name, type) {
-    override fun emitInitBegin(writer: MapperMapSetWriter) {
+) : MapperActionTarget(name, type) {
+    override fun emitInitBegin(writer: MapperActionWriter) {
     }
 
-    override fun emitInitFinish(writer: MapperMapSetWriter) {
+    override fun emitInitFinish(writer: MapperActionWriter) {
     }
 }
 
-private class InitialRequiredMapTarget(
+private class InitialRequiredMapperTarget(
     mapSet: MapperAction,
     name: String,
     type: KSType,
     val nullableParameter: String?
-) : MapActionTarget(name, type) {
-    override fun emitInitBegin(writer: MapperMapSetWriter) {
+) : MapperActionTarget(name, type) {
+    override fun emitInitBegin(writer: MapperActionWriter) {
         val code = CodeBlock.builder().apply {
             addStatement("val %L = %T(", name, type.toClassName())
             indent()
@@ -194,7 +197,7 @@ private class InitialRequiredMapTarget(
         writer.add(code)
     }
 
-    override fun emitInitFinish(writer: MapperMapSetWriter) {
+    override fun emitInitFinish(writer: MapperActionWriter) {
         writer.add(CodeBlock.builder().unindent().addStatement(")").build())
     }
 }
@@ -203,10 +206,10 @@ private class ReceiverMapTarget(
     mapSet: MapperAction,
     name: String,
     type: KSType,
-) : MapActionTarget(name, type) {
-    override fun emitInitBegin(writer: MapperMapSetWriter) {
+) : MapperActionTarget(name, type) {
+    override fun emitInitBegin(writer: MapperActionWriter) {
     }
 
-    override fun emitInitFinish(writer: MapperMapSetWriter) {
+    override fun emitInitFinish(writer: MapperActionWriter) {
     }
 }

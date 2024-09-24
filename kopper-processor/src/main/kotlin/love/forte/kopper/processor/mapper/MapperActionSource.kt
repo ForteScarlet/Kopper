@@ -27,20 +27,20 @@ import love.forte.kopper.processor.util.findProperty
 /**
  * A type as a mapping source.
  */
-internal data class MapActionSource(
-    var sourceMapSet: MapperAction,
+internal data class MapperActionSource(
+    var action: MapperAction,
     var isMain: Boolean = false,
     var name: String,
     var type: KSType,
 ) {
     private val logger: KSPLogger
-        get() = sourceMapSet.environment.logger
+        get() = action.environment.logger
 
     val nullable: Boolean
         get() = type.nullability != Nullability.NOT_NULL
 
     private val properties: MutableMap<Path, MapActionSourceTypedProperty> = mutableMapOf()
-    private val subSources: MutableMap<String, MapActionSource> = mutableMapOf()
+    private val subSources: MutableMap<String, MapperActionSource> = mutableMapOf()
 
     fun property(
         path: Path,
@@ -83,8 +83,8 @@ internal data class MapActionSource(
         val subSource = subSources.computeIfAbsent(
             currentProperty.name
         ) {
-            MapActionSource(
-                sourceMapSet = sourceMapSet,
+            MapperActionSource(
+                action = action,
                 isMain = false,
                 name = currentProperty.name,
                 type = currentProperty.type
@@ -108,7 +108,7 @@ internal data class MapActionSource(
 
 
 private fun propertyDirect0(
-    source: MapActionSource,
+    source: MapperActionSource,
     from: KSType,
     name: String,
     propertyType: PropertyType,
@@ -137,7 +137,7 @@ private fun propertyDirect0(
 )
 
 private fun propertyDeep0(
-    source: MapActionSource,
+    source: MapperActionSource,
     parentProperty: MapActionSourceProperty,
     from: KSType,
     name: String,
@@ -181,7 +181,7 @@ private inline fun property0(
     if (find == null) {
         find = findProperty(
             name = name,
-            type = from,
+            declaration = from,
             propertyType = propertyType,
             onProperty = onProperty,
             onFunction = onFunction

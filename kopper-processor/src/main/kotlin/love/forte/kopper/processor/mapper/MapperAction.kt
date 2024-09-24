@@ -23,7 +23,7 @@ import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import love.forte.kopper.processor.def.MapperActionDef
-import java.util.LinkedList
+import java.util.*
 
 internal data class MapperMapSetFunInfo(
     val name: String,
@@ -66,14 +66,14 @@ internal enum class MapperMapSetFunParameterType {
  */
 internal class MapperAction internal constructor(
     val def: MapperActionDef,
-    val generator: MapperActionGenerator,
+    val generator: MapperActionsGenerator,
 ) {
     var funBuilder: FunSpec.Builder = FunSpec.builder(def.name)
 
-    val maps: LinkedList<MapperMap> = LinkedList()
+    val maps: LinkedList<MapperActionStatement> = LinkedList()
 
     lateinit var targetClassDeclaration: KSClassDeclaration
-    lateinit var target: MapActionTarget
+    lateinit var target: MapperActionTarget
     var subMapperSets = mutableListOf<MapperAction>()
 
     fun prepare() {
@@ -101,19 +101,21 @@ internal class MapperAction internal constructor(
             // return
             sourceFun.returnType?.toTypeName()?.also { funBuilder.returns(it) }
         } else {
+            // If there have no source fun, should not have receiver either,
             funBuilder.addModifiers(KModifier.PRIVATE)
-            // main first, source after,
+            // main first,
+            // sources after,
             // target last
             def.sources.sortedByDescending { it.isMain }.forEach { sourceDef ->
                 funBuilder.addParameter(
-                    sourceDef.incoming.name ?: "_main_this",
+                    sourceDef.incoming.name!!, // ?: "_main_this",
                     type = sourceDef.incoming.type.toTypeName(),
                 )
             }
 
             if (def.target.incoming != null) {
                 funBuilder.addParameter(
-                    name = def.target.incoming.name ?: "_target_this",
+                    name = def.target.incoming.name!!, // ?: "_target_this",
                     type = def.target.incoming.type.toTypeName(),
                 )
             }
@@ -131,6 +133,7 @@ internal class MapperAction internal constructor(
         val deepTargets = mapArgsWithTargetPath.filterTo(mutableMapOf()) { (k, _) -> k.hasChild() }
 
         for ((path, mapArg) in rootTargets) {
+
             // 获取 target 属性
             // 检测类型，如果是 deep 类型，添加到 deepTargets 并跳过
             // 检测 target 是可变属性或require

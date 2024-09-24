@@ -22,6 +22,7 @@ import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
+import java.util.LinkedList
 
 // Mapper -> A Type annotated with @Mapper, e.g., an interface or an abstract class
 // MapperMapSet -> A function in Mapper.
@@ -37,15 +38,15 @@ internal data class MapperMapSetInfo(
  */
 internal data class MapperMapSetKey(
     val name: String,
-    val target: MapActionTarget,
-    val sources: Set<MapActionSource>,
+    val target: MapperActionTarget,
+    val sources: Set<MapperActionSource>,
 )
 
 internal class MapperWriter(
     val environment: SymbolProcessorEnvironment,
     val resolver: Resolver,
     val collect: MutableMap<MapperMapSetKey, MapperMapSetInfo> = linkedMapOf(),
-    val mapSetWriters: ArrayDeque<MapperMapSetWriter> = ArrayDeque(),
+    val mapSetWriters: ArrayDeque<MapperActionWriter> = ArrayDeque(),
 ) {
     private var indexEmitter: Int = 0
 
@@ -62,16 +63,16 @@ internal class MapperWriter(
         }
     }
 
-    fun newMapSetWriter(
+    fun newMapperActionWriter(
         root: FunSpec.Builder,
-        stacks: ArrayDeque<FunSpec.Builder> = ArrayDeque()
-    ): MapperMapSetWriter {
-        val writer = MapperMapSetWriter(
+        stacks: LinkedList<FunSpec.Builder> = LinkedList()
+    ): MapperActionWriter {
+        val writer = MapperActionWriter(
             environment = environment,
             resolver = resolver,
             mapperWriter = this,
             root = root,
-            stacks = stacks
+            funList = stacks
         )
         mapSetWriters.add(writer)
         return writer
@@ -259,12 +260,12 @@ internal class MapperWriter(
     }
 }
 
-internal class MapperMapSetWriter(
+internal class MapperActionWriter(
     val environment: SymbolProcessorEnvironment,
     val resolver: Resolver,
     val mapperWriter: MapperWriter,
     val root: FunSpec.Builder,
-    val stacks: ArrayDeque<FunSpec.Builder> = ArrayDeque()
+    val funList: LinkedList<FunSpec.Builder> = LinkedList()
 ) {
     private var indexEmitter: Int = 0
 
@@ -275,37 +276,37 @@ internal class MapperMapSetWriter(
     fun nextIndex(): Int = indexEmitter++
 
     fun add(code: CodeBlock) {
-        if (stacks.isEmpty()) {
+        if (funList.isEmpty()) {
             root.addCode(code)
         } else {
-            stacks.last().addCode(code)
+            funList.last().addCode(code)
         }
     }
 
     fun add(format: String, vararg args: Any?) {
-        if (stacks.isEmpty()) {
+        if (funList.isEmpty()) {
             root.addCode(format, *args)
         } else {
-            stacks.last().addCode(format, *args)
+            funList.last().addCode(format, *args)
         }
     }
 
     fun addStatement(format: String, vararg args: Any) {
-        if (stacks.isEmpty()) {
+        if (funList.isEmpty()) {
             root.addStatement(format, *args)
         } else {
-            stacks.last().addCode(format, *args)
+            funList.last().addCode(format, *args)
         }
     }
 
     fun push(funSpec: FunSpec.Builder) {
-        stacks.addLast(funSpec)
+        funList.addLast(funSpec)
     }
 
     fun pop(): FunSpec.Builder {
-        if (stacks.isEmpty()) {
+        if (funList.isEmpty()) {
             return root
         }
-        return stacks.removeLast()
+        return funList.removeLast()
     }
 }
