@@ -134,7 +134,7 @@ internal data class EvalPropertyMapperMap(
 ) : PropertyMapperMap {
     override fun emit(writer: MapperActionWriter, index: Int) {
         val read = PropertyRead(name = "eval", CodeBlock.of(eval), nullable = evalNullable)
-        targetProperty.emit(writer, read)
+        // TODO targetProperty.emit(writer, read)
     }
 }
 

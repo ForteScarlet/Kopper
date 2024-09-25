@@ -19,6 +19,8 @@ package love.forte.kopper.processor.def
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSClassDeclaration
+import love.forte.kopper.processor.util.isNullable
+import java.util.concurrent.ConcurrentHashMap
 
 
 /**
@@ -46,10 +48,50 @@ internal data class MapperActionTargetDef(
      */
     val nullable: Boolean,
 ) {
-    // find property
-    fun property(name: String): ModifiableProperty = TODO()
+    private val propertyCache = ConcurrentHashMap<String, ModifiablePropertyDef>()
 
-    // get requires
-    fun requires(): List<RequiredParameter> = TODO()
+    /**
+     * Find root property from [declaration] by [name].
+     */
+    fun property(name: String): ModifiablePropertyDef? {
+        fun find(): ModifiablePropertyDef? {
+            val foundProp = declaration.getAllProperties()
+                // 寻找名字匹配的，类型似乎无关紧要——毕竟名字是唯一的
+                .find { it.simpleName.asString() == name }
+                ?: return null
+
+            val type = foundProp.type.resolve()
+            return ModifiablePropertyDef(
+                environment = environment,
+                resolver = resolver,
+                name = name,
+                declaration = type.declaration,
+                nullable = type.nullability.isNullable,
+            )
+        }
+
+        return propertyCache.compute(name) { _, curr ->
+            curr ?: find()
+        }
+    }
+
+    /**
+     * Required constructor parameters.
+     * Null if it has no primary constructor.
+     */
+    val requires: List<RequiredParameterDef>? by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        val constructor = declaration.primaryConstructor ?: return@lazy null
+
+        constructor.parameters.map { parameter ->
+            val type = parameter.type.resolve()
+            RequiredParameterDef(
+                environment = environment,
+                resolver = resolver,
+                name = parameter.name!!.asString(),
+                declaration = type.declaration,
+                nullable = type.nullability.isNullable,
+            )
+        }
+    }
 }
 

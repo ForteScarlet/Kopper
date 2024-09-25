@@ -19,6 +19,7 @@ package love.forte.kopper.processor.def
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSDeclaration
+import com.squareup.kotlinpoet.CodeBlock
 import love.forte.kopper.annotation.PropertyType
 
 
@@ -26,7 +27,7 @@ import love.forte.kopper.annotation.PropertyType
  * A real readable property in any [MapperActionSourceDef].
  * @author ForteScarlet
  */
-internal data class ReadableProperty(
+internal data class ReadablePropertyDef(
     val environment: SymbolProcessorEnvironment,
     val resolver: Resolver,
     // 可以读取的属性，可以在 action source 中获取
@@ -44,7 +45,7 @@ internal data class ReadableProperty(
     val nullable: Boolean,
 
     // 如果是嵌套的，它应该有个父属性，否则是个根属性
-    val parent: ReadableProperty?
+    val parent: ReadablePropertyDef?
 ) {
     override fun toString(): String {
         return buildString {
@@ -67,13 +68,32 @@ internal data class ReadableProperty(
 }
 
 /**
- * 全链路nullable, 即如果 [ReadableProperty.parent] 那么也会被影响为 `nullable`。
+ * 全链路nullable, 即如果 [ReadablePropertyDef.parent] 那么也会被影响为 `nullable`。
  */
-internal val ReadableProperty.fullyNullable: Boolean
+internal val ReadablePropertyDef.fullyNullable: Boolean
     get() = fullyNullable()
 
-private tailrec fun ReadableProperty.fullyNullable(): Boolean {
+private tailrec fun ReadablePropertyDef.fullyNullable(): Boolean {
     val p = parent ?: return nullable
     if (nullable) return true
     return p.fullyNullable()
+}
+
+
+internal fun ReadablePropertyDef.readerCode(sourceNullable: Boolean = false): CodeBlock {
+    return CodeBlock.builder().apply {
+        val parent = parent
+        if (parent != null) {
+            add(parent.readerCode(sourceNullable))
+            if (sourceNullable || parent.fullyNullable) {
+                add("?")
+            }
+            add(".")
+        }
+
+        add("%L", name)
+        if (propertyType == PropertyType.FUNCTION) {
+            add("()")
+        }
+    }.build()
 }

@@ -41,19 +41,18 @@ internal data class MapperActionSourceDef(
     val incoming: MapActionIncoming,
     val isMain: Boolean,
 ) {
-
     /**
      * find Single (current root) property
      */
-    fun property(name: String): ReadableProperty? {
+    fun property(name: String): ReadablePropertyDef? {
         return findPropertyDirect(name, null)
     }
 
-    fun property(path: Path): ReadableProperty? {
+    fun property(path: Path): ReadablePropertyDef? {
         return property(path, null)
     }
 
-    private tailrec fun property(path: Path, parent: ReadableProperty?): ReadableProperty? {
+    private tailrec fun property(path: Path, parent: ReadablePropertyDef?): ReadablePropertyDef? {
         val current = findPropertyDirect(path.name, parent)
             ?: return null
 
@@ -66,23 +65,23 @@ internal data class MapperActionSourceDef(
 
 private fun MapperActionSourceDef.findPropertyDirect(
     name: String,
-    parent: ReadableProperty?,
-): ReadableProperty? {
+    parent: ReadablePropertyDef?,
+): ReadablePropertyDef? {
     return findPropPropertyDirect(name, parent)
         ?: findFunPropertyDirect(name, parent)
 }
 
 private fun MapperActionSourceDef.findPropPropertyDirect(
     name: String,
-    parent: ReadableProperty?,
-): ReadableProperty? {
+    parent: ReadablePropertyDef?,
+): ReadablePropertyDef? {
     val firstProp = declaration.getAllProperties()
         .firstOrNull { it.simpleName.asString() == name }
         ?: return null
 
     val type = firstProp.type.resolve()
 
-    return ReadableProperty(
+    return ReadablePropertyDef(
         environment = environment,
         resolver = resolver,
         name = name,
@@ -95,8 +94,8 @@ private fun MapperActionSourceDef.findPropPropertyDirect(
 
 private fun MapperActionSourceDef.findFunPropertyDirect(
     name: String,
-    parent: ReadableProperty?,
-): ReadableProperty? {
+    parent: ReadablePropertyDef?,
+): ReadablePropertyDef? {
     val firstFun = declaration.asClassDeclaration()
         ?.getAllFunctions()
         // 没有参数，有返回值
@@ -109,7 +108,7 @@ private fun MapperActionSourceDef.findFunPropertyDirect(
 
     val type = firstFun.returnType!!.resolve()
 
-    return ReadableProperty(
+    return ReadablePropertyDef(
         environment = environment,
         resolver = resolver,
         name = name,

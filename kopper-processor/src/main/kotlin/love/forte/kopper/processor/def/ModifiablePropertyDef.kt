@@ -20,27 +20,42 @@ import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSDeclaration
 
+internal sealed interface TargetPropertyDef {
+    val isRequired: Boolean
+    val environment: SymbolProcessorEnvironment
+    val resolver: Resolver
+    val name: String
+    val declaration: KSDeclaration
+    val nullable: Boolean
+}
+
 /**
  * 非构造的其他可变参数
  */
-internal data class ModifiableProperty(
-    val environment: SymbolProcessorEnvironment,
-    val resolver: Resolver,
+internal data class ModifiablePropertyDef(
+    override val environment: SymbolProcessorEnvironment,
+    override val resolver: Resolver,
     // 可以修改的属性，可以在 action target 中获取
     // 必须是属性类型，必须是根属性
 
-    val name: String,
-    val declaration: KSDeclaration,
-    val nullable: Boolean,
-)
+    override val name: String,
+    override val declaration: KSDeclaration,
+    override val nullable: Boolean,
+) : TargetPropertyDef {
+    override val isRequired: Boolean
+        get() = false
+}
 
 /**
  * 构造中所必须地初始化参数，在需要对 target 进行内部初始化时使用。
  */
-internal data class RequiredParameter(
-    val environment: SymbolProcessorEnvironment,
-    val resolver: Resolver,
-    val name: String,
-    val declaration: KSDeclaration,
-    val nullable: Boolean,
-)
+internal data class RequiredParameterDef(
+    override val environment: SymbolProcessorEnvironment,
+    override val resolver: Resolver,
+    override val name: String,
+    override val declaration: KSDeclaration,
+    override val nullable: Boolean,
+) : TargetPropertyDef {
+    override val isRequired: Boolean
+        get() = true
+}

@@ -17,45 +17,31 @@
 package love.forte.kopper.processor.mapper
 
 import com.google.devtools.ksp.symbol.KSType
-import com.google.devtools.ksp.symbol.Nullability
 import com.squareup.kotlinpoet.CodeBlock
-import love.forte.kopper.annotation.PropertyType
+import love.forte.kopper.processor.def.ReadablePropertyDef
+import love.forte.kopper.processor.def.fullyNullable
+import love.forte.kopper.processor.def.readerCode
 
 /**
  * A property for mapping source.
  */
 internal interface MapActionSourceProperty {
     val source: MapperActionSource
+    val def: ReadablePropertyDef
 
-    /**
-     * Name of source property.
-     */
-    val name: String
-
-    /**
-     * The [MapActionSourceProperty]'s [PropertyType].
-     * - If it is a function, it must have no parameters and have a return value, e.g. `fun prop(): AType`.
-     *   The `get` prefix is disregarded and its name can be specified manually and directly.
-     */
-    val propertyType: PropertyType
-
-    /**
-     * Kotlin's nullable or Java's platform type.
-     */
-    val nullable: Boolean
+    val valueNullable: Boolean
+        get() = source.def.incoming.nullable || def.fullyNullable
 
     /**
      * Read this property's value.
-     * @return An expression that can be stored by a local variable,
-     * the type of the expression is type
      */
-    fun read(): PropertyRead
+    fun propertyAccessor(): CodeBlock
 }
 
 internal interface MapActionSourceTypedProperty : MapActionSourceProperty {
     val type: KSType
-    override val nullable: Boolean
-        get() = type.nullability != Nullability.NOT_NULL
+    // val nullable: Boolean
+    //     get() = type.nullability != Nullability.NOT_NULL
 }
 
 
@@ -74,141 +60,158 @@ internal fun PropertyRead.codeWithCast(writer: MapperWriter, target: KSType): Co
     }
 }
 
-
-internal data class InternalMapSetActionSourceProperty(
-    override val source: MapperActionSource,
-    override val type: KSType,
-    override val name: String,
-    override val propertyType: PropertyType,
-    // val mapSet: MapperMapSet,
-    val subFunName: String,
-    val receiverProperty: MapActionSourceProperty?,
-    val parameters: List<String>,
-) : MapActionSourceTypedProperty {
-    override fun read(): PropertyRead {
-        val code = CodeBlock.builder()
-            .apply {
-                if (receiverProperty != null) {
-                    val read = receiverProperty.read()
-                    val con = if (read.nullable) "?." else "."
-                    add(read.code)
-                    add(con)
-                }
-                // else {
-                //     val main = mapSet.sources.find { it.isMain }
-                //     if (main != null) {
-                //         val con = if (main.nullable) "?." else "."
-                //         add("%L", main.name)
-                //         add(con)
-                //     }
-                // }
-                add("%L(", name)
-                parameters.forEachIndexed { index, pname ->
-                    add("%L", pname)
-                    if (index != parameters.lastIndex) {
-                        add(",")
-                    }
-                }
-                add(")")
-            }
-            .build()
-
-        return PropertyRead(
-            name = source.name,
-            code = code,
-            nullable = nullable,
-            type = type,
-        )
-    }
-}
+// internal data class InternalMapSetActionSourceProperty(
+//     override val source: MapperActionSource,
+//     override val type: KSType,
+//     override val def: ReadablePropertyDef,
+//     // val mapSet: MapperMapSet,
+//     val subFunName: String,
+//     val receiverProperty: MapActionSourceProperty?,
+//     val parameters: List<String>,
+// ) : MapActionSourceTypedProperty {
+//     override fun propertyAccessor(): CodeBlock {
+//         return CodeBlock.builder().apply {
+//             val readerCode = def.readerCode(source.nullable)
+//         }.build()
+//     }
+//
+//     fun read(): PropertyRead {
+//         val code = CodeBlock.builder()
+//             .apply {
+//                 if (receiverProperty != null) {
+//                     val read = receiverProperty.propertyAccessor()
+//                     val con = if (read.nullable) "?." else "."
+//                     add(read.code)
+//                     add(con)
+//                 }
+//                 // else {
+//                 //     val main = mapSet.sources.find { it.isMain }
+//                 //     if (main != null) {
+//                 //         val con = if (main.nullable) "?." else "."
+//                 //         add("%L", main.name)
+//                 //         add(con)
+//                 //     }
+//                 // }
+//                 add("%L(", name)
+//                 parameters.forEachIndexed { index, pname ->
+//                     add("%L", pname)
+//                     if (index != parameters.lastIndex) {
+//                         add(",")
+//                     }
+//                 }
+//                 add(")")
+//             }
+//             .build()
+//
+//         return PropertyRead(
+//             name = source.name,
+//             code = code,
+//             nullable = nullable,
+//             type = type,
+//         )
+//     }
+// }
 
 
 internal data class DirectMapActionSourceProperty(
     override val source: MapperActionSource,
-    override val name: String,
-    override val propertyType: PropertyType,
+    override val def: ReadablePropertyDef,
     override val type: KSType,
 ) : MapActionSourceTypedProperty {
-    override fun read(): PropertyRead {
-        val sourceNullable = source.nullable
-        val conOp = if (sourceNullable) "?." else "."
-        val initialCode = when (propertyType) {
-            PropertyType.FUNCTION -> CodeBlock.of("%L${conOp}%L()", source.name, name)
-            else -> CodeBlock.of("%L${conOp}%L", source.name, name)
-        }
-
-        return PropertyRead(
-            name = source.name,
-            code = initialCode,
-            nullable = nullable,
-            type = type,
-        )
-    }
-}
-
-
-/**
- * `a.b.c`
- */
-internal class DeepPathMapActionSourceProperty(
-    override val source: MapperActionSource,
-    private val parentProperty: MapActionSourceProperty,
-    /**
-     * Last final simple name.
-     */
-    override val name: String,
-    override val propertyType: PropertyType,
-    override val type: KSType,
-) : MapActionSourceTypedProperty {
-    override fun read(): PropertyRead {
-        val parentPropertyReadCode = parentProperty.read()
-        val conOp = if (parentPropertyReadCode.nullable) "?." else "."
-        val initialCode = when (propertyType) {
-            PropertyType.FUNCTION -> {
-                CodeBlock.builder()
-                    .apply {
-                        add(parentPropertyReadCode.code)
-                        add(conOp)
-                        add("%L()", name)
-                    }.build()
+    override fun propertyAccessor(): CodeBlock {
+        val sourceDef = source.def
+        val sourceNullable = sourceDef.incoming.nullable
+        return CodeBlock.builder().apply {
+            add("%L", sourceDef.incoming.name ?: "this")
+            if (sourceNullable) {
+                add("?")
             }
+            add(".")
 
-            else -> {
-                CodeBlock.builder()
-                    .apply {
-                        add(parentPropertyReadCode.code)
-                        add(conOp)
-                        add("%L", name)
-                    }
-                    .build()
-            }
-        }
-
-        return PropertyRead(
-            name = source.name,
-            code = initialCode,
-            nullable = nullable,
-            type = type,
-        )
+            val readerCode = def.readerCode(sourceNullable)
+            add(readerCode)
+        }.build()
     }
+
+    // fun read(): PropertyRead {
+    //     val sourceNullable = source.nullable
+    //     val conOp = if (sourceNullable) "?." else "."
+    //     val initialCode = when (propertyType) {
+    //         PropertyType.FUNCTION -> CodeBlock.of("%L${conOp}%L()", source.name, name)
+    //         else -> CodeBlock.of("%L${conOp}%L", source.name, name)
+    //     }
+    //
+    //     return PropertyRead(
+    //         name = source.name,
+    //         code = initialCode,
+    //         nullable = nullable,
+    //         type = type,
+    //     )
+    // }
 }
 
+//
+// /**
+//  * `a.b.c`
+//  */
+// internal class DeepPathMapActionSourceProperty(
+//     override val source: MapperActionSource,
+//     private val parentProperty: MapActionSourceProperty,
+//     /**
+//      * Last final simple name.
+//      */
+//     override val name: String,
+//     override val propertyType: PropertyType,
+//     override val type: KSType,
+// ) : MapActionSourceTypedProperty {
+//     override fun read(): PropertyRead {
+//         val parentPropertyReadCode = parentProperty.read()
+//         val conOp = if (parentPropertyReadCode.nullable) "?." else "."
+//         val initialCode = when (propertyType) {
+//             PropertyType.FUNCTION -> {
+//                 CodeBlock.builder()
+//                     .apply {
+//                         add(parentPropertyReadCode.code)
+//                         add(conOp)
+//                         add("%L()", name)
+//                     }.build()
+//             }
+//
+//             else -> {
+//                 CodeBlock.builder()
+//                     .apply {
+//                         add(parentPropertyReadCode.code)
+//                         add(conOp)
+//                         add("%L", name)
+//                     }
+//                     .build()
+//             }
+//         }
+//
+//         return PropertyRead(
+//             name = source.name,
+//             code = initialCode,
+//             nullable = nullable,
+//             type = type,
+//         )
+//     }
+// }
 
-internal class EvalActionSourceProperty(
-    override val name: String,
-    override val source: MapperActionSource,
-    override val nullable: Boolean,
-    private val eval: String,
-) : MapActionSourceProperty {
-    override val propertyType: PropertyType
-        get() = PropertyType.AUTO
-
-    override fun read(): PropertyRead {
-        return PropertyRead(
-            name = name,
-            code = CodeBlock.of(eval),
-            nullable = nullable,
-            type = null,
-        )
-    }
-}
+// internal class EvalActionSourceProperty(
+//     override val name: String,
+//     override val source: MapperActionSource,
+//     override val nullable: Boolean,
+//     private val eval: String,
+// ) : MapActionSourceProperty {
+//     override val propertyType: PropertyType
+//         get() = PropertyType.AUTO
+//
+//     override fun read(): PropertyRead {
+//         return PropertyRead(
+//             name = name,
+//             code = CodeBlock.of(eval),
+//             nullable = nullable,
+//             type = null,
+//         )
+//     }
+// }

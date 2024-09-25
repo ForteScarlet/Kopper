@@ -16,112 +16,111 @@
 
 package love.forte.kopper.processor.mapper
 
-import com.google.devtools.ksp.symbol.KSType
-import com.google.devtools.ksp.symbol.Nullability
 import com.squareup.kotlinpoet.CodeBlock
-import love.forte.kopper.annotation.PropertyType
+import love.forte.kopper.processor.def.TargetPropertyDef
 
 /**
  * A property for mapping target.
  */
 internal interface MapActionTargetProperty {
     val target: MapperActionTarget
+    val def: TargetPropertyDef
 
     /**
-     * Name of target property.
+     * propertyRefName,
+     * e.g.
+     * `targetName.propertyName`,
+     * `targetName?.propertyName`,
+     * and if required:
+     * `propertyName`
      */
-    val name: String
+    val propertyRefName: CodeBlock
 
-    /**
-     * The [MapActionTargetProperty]'s [PropertyType].
-     * - If it is a property, it must have a `var` property or a constructor property.
-     * - If it is a function, it must have only one parameter, e.g. `fun prop(value: AType)`.
-     *   The `set` prefix is disregarded and its name can be specified manually and directly.
-     */
-    val propertyType: PropertyType
-
-    /**
-     * Type of this property.
-     */
-    val type: KSType
-
-    /**
-     * Kotlin's nullable or Java's platform type.
-     */
-    val nullable: Boolean
-        get() = type.nullability != Nullability.NOT_NULL
-
-    /**
-     * emit a property setter with [read] into [writer]
-     */
-    fun emit(writer: MapperActionWriter, read: PropertyRead)
+    // /**
+    //  * emit a property setter with [read] into [writer]
+    //  */
+    // fun emit(writer: MapperActionWriter, read: PropertyRead)
 }
 
 
 internal data class MapActionTargetPropertyImpl(
     override val target: MapperActionTarget,
-    override val name: String,
-    override val propertyType: PropertyType,
-    override val type: KSType,
+    override val def: TargetPropertyDef,
 ) : MapActionTargetProperty {
-    override fun emit(writer: MapperActionWriter, read: PropertyRead) {
-        val propCon = if (target.nullable) "?." else "."
-        val sourceCode = read.codeWithCast(writer.mapperWriter, type)
-        val sourceNullable = read.nullable
 
-        val sourceCon = if (sourceNullable) "?." else "."
-
-        val safeSet = nullable || (!nullable && !sourceNullable)
-
-        val code = when (propertyType) {
-            PropertyType.FUNCTION -> {
-                if (safeSet) {
-                    CodeBlock.builder().apply {
-                        // %L?.%L(code)
-                        add("%L", target.name)
-                        add(propCon)
-                        add("%L(", name)
-                        add(sourceCode)
-                        add(")\n")
-                    }.build()
-                } else {
-                    CodeBlock.builder()
-                        .apply {
-                            add("(")
-                            add(sourceCode)
-                            add(")")
-                            beginControlFlow("${sourceCon}also")
-                            addStatement("%L${propCon}%L(it)", target.name, name)
-                            endControlFlow()
-                        }.build()
-                }
+    override val propertyRefName: CodeBlock
+        get() {
+            // if it's required, just return property name
+            if (def.isRequired) {
+                return CodeBlock.of("%L", def.name)
             }
 
-            else -> {
-                if (safeSet) {
-                    CodeBlock.builder().apply {
-                        // %L?.%L = code
-                        add("«")
-                        add("%L", target.name)
-                        add(propCon)
-                        add("%L = ", name)
-                        add(sourceCode)
-                        add("\n»")
-                    }.build()
-                } else {
-                    CodeBlock.builder()
-                        .apply {
-                            add("(")
-                            add(sourceCode)
-                            add(")")
-                            beginControlFlow("${sourceCon}also")
-                            addStatement("%L${propCon}%L = it", target.name, name)
-                            endControlFlow()
-                        }.build()
-                }
+            return when {
+                target.def.nullable ->
+                    CodeBlock.of("%L?.%L", target.name, def.name)
+                else ->
+                    CodeBlock.of("%L.%L", target.name, def.name)
             }
         }
 
-        writer.add(code)
-    }
+    // override fun emit(writer: MapperActionWriter, read: PropertyRead) {
+    //     val propCon = if (target.nullable) "?." else "."
+    //     val sourceCode = read.codeWithCast(writer.mapperWriter, type)
+    //     val sourceNullable = read.nullable
+    //
+    //     val sourceCon = if (sourceNullable) "?." else "."
+    //
+    //     val safeSet = nullable || (!nullable && !sourceNullable)
+    //
+    //     val code = when (propertyType) {
+    //         PropertyType.FUNCTION -> {
+    //             if (safeSet) {
+    //                 CodeBlock.builder().apply {
+    //                     // %L?.%L(code)
+    //                     add("%L", target.name)
+    //                     add(propCon)
+    //                     add("%L(", name)
+    //                     add(sourceCode)
+    //                     add(")\n")
+    //                 }.build()
+    //             } else {
+    //                 CodeBlock.builder()
+    //                     .apply {
+    //                         add("(")
+    //                         add(sourceCode)
+    //                         add(")")
+    //                         beginControlFlow("${sourceCon}also")
+    //                         addStatement("%L${propCon}%L(it)", target.name, name)
+    //                         endControlFlow()
+    //                     }.build()
+    //             }
+    //         }
+    //
+    //         else -> {
+    //             if (safeSet) {
+    //                 CodeBlock.builder().apply {
+    //                     // %L?.%L = code
+    //                     add("«")
+    //                     add("%L", target.name)
+    //                     add(propCon)
+    //                     add("%L = ", name)
+    //                     add(sourceCode)
+    //                     add("\n»")
+    //                 }.build()
+    //             } else {
+    //                 CodeBlock.builder()
+    //                     .apply {
+    //                         add("(")
+    //                         add(sourceCode)
+    //                         add(")")
+    //                         beginControlFlow("${sourceCon}also")
+    //                         addStatement("%L${propCon}%L = it", target.name, name)
+    //                         endControlFlow()
+    //                     }.build()
+    //             }
+    //         }
+    //     }
+    //
+    //     writer.add(code)
+    // }
 }

@@ -399,6 +399,7 @@ internal inline fun MapperAction.resolveSubMapSetProperty(
 
     val mainPropertySource = MapperActionSource(
         this,
+        def = TODO(),
         isMain = true,
         name = "this",
         type = targetReceiverProperty.type,

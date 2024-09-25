@@ -22,7 +22,9 @@ import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
+import love.forte.kopper.processor.def.MapArgs
 import love.forte.kopper.processor.def.MapperActionDef
+import love.forte.kopper.processor.util.isMappableStructType
 import java.util.*
 
 internal data class MapperMapSetFunInfo(
@@ -72,8 +74,9 @@ internal class MapperAction internal constructor(
 
     val maps: LinkedList<MapperActionStatement> = LinkedList()
 
-    lateinit var targetClassDeclaration: KSClassDeclaration
-    lateinit var target: MapperActionTarget
+    var targetClassDeclaration: KSClassDeclaration = def.target.declaration
+    var target: MapperActionTarget = MapperActionTarget(def.target, generator)
+
     var subMapperSets = mutableListOf<MapperAction>()
 
     fun prepare() {
@@ -94,7 +97,6 @@ internal class MapperAction internal constructor(
         val sourceFun = def.sourceFun
         if (sourceFun != null) {
             funBuilder.addModifiers(KModifier.OVERRIDE)
-            // parameters,
             // parameters
             sourceFun.extensionReceiver?.also { funBuilder.receiver(it.toTypeName()) }
             sourceFun.parameters.forEach { funBuilder.addParameter(it.name!!.asString(), it.type.toTypeName()) }
@@ -127,28 +129,41 @@ internal class MapperAction internal constructor(
     }
 
     private fun prepareMaps() {
+        data class PropertyWithMapArgs(val property: MapActionTargetProperty, val mapArgs: MapArgs)
+
         val mapArgsWithTargetPath = def.mapArgs.toMutableList().associateBy { it.target.toPath() }
 
         val rootTargets = mapArgsWithTargetPath.filterTo(mutableMapOf()) { (k, _) -> !k.hasChild() }
         val deepTargets = mapArgsWithTargetPath.filterTo(mutableMapOf()) { (k, _) -> k.hasChild() }
 
-        for ((path, mapArg) in rootTargets) {
+        val rootStructTargets = mutableMapOf<String, PropertyWithMapArgs>()
 
-            // 获取 target 属性
-            // 检测类型，如果是 deep 类型，添加到 deepTargets 并跳过
-            // 检测 target 是可变属性或require
+        for ((path, mapArg) in rootTargets) {
+            val name = path.name
+            val targetProperty = target.property(name)
+                ?: error("Unknown target $path in $target")
+
+            val isMappableType = targetProperty.def.declaration.isMappableStructType(def.resolver.builtIns)
+            if (isMappableType) {
+                rootStructTargets[name] = PropertyWithMapArgs(targetProperty, mapArg)
+                continue
+            }
+
+            // TODO 普通类型，尝试直接赋值
+
+
+            // TODO 获取 target 属性
+            //  检测类型，如果是 deep 类型，添加到 deepTargets 并跳过
+            //  检测 target 是可变属性或require
 
         }
 
         // TODO
-        // 直接单属性映射, 以 target 为准
-        // 剩余的 target 从 main 中找
-
-        // 再剩下有层级的、或类型不是可以直接转化的，将它们处理为sub action,
-        // 先寻找现有的、可以完全匹配的，
-        //   完全匹配，指那个
-        // 找不到就请求创建一个新的
-
+        //  直接单属性映射, 以 target 为准
+        //  剩余的 target 从 main 中找
+        //  再剩下有层级的、或类型不是可以直接转化的，将它们处理为sub action,
+        //  先寻找现有的、可以完全匹配的，
+        //  找不到就请求创建一个新的
 
     }
 
