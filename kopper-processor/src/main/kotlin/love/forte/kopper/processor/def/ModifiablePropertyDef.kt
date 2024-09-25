@@ -55,6 +55,7 @@ internal data class RequiredParameterDef(
     override val name: String,
     override val declaration: KSDeclaration,
     override val nullable: Boolean,
+    val hasDefaultValue: Boolean,
 ) : TargetPropertyDef {
     override val isRequired: Boolean
         get() = true

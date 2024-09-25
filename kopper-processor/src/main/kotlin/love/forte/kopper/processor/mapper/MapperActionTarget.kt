@@ -23,8 +23,15 @@ internal class MapperActionTarget(
     val generator: MapperActionsGenerator,
 ) {
     // TODO Local readable variable name
-    var name: String = ""
+    lateinit var name: String
     // val targetSourceMap: MutableMap<Path, MapActionSourceProperty> = mutableMapOf()
+
+    init {
+        def.incoming?.also { inc -> name = inc.name ?: "this" }
+    }
+
+    fun isNameInitialized(): Boolean =
+        ::name.isInitialized
 
     /**
      * find a property from this target.

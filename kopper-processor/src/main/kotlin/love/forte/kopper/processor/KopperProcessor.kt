@@ -23,12 +23,11 @@ import com.google.devtools.ksp.processing.SymbolProcessor
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSFile
 import com.squareup.kotlinpoet.ksp.writeTo
 import love.forte.kopper.processor.def.MapperDef
 import love.forte.kopper.processor.def.resolveToMapperDef
-import love.forte.kopper.processor.mapper.Mapper
 import love.forte.kopper.processor.mapper.MapperGenerator
-import love.forte.kopper.processor.mapper.resolveToMapper
 
 private const val MAPPER_ANNOTATION_NAME = "love.forte.kopper.annotation.Mapper"
 
@@ -36,9 +35,11 @@ internal class KopperProcessor(
     private val environment: SymbolProcessorEnvironment
 ) : SymbolProcessor {
 
+    private lateinit var resolver: Resolver
     private val mapperDefs = mutableListOf<MapperDef>()
 
     override fun process(resolver: Resolver): List<KSAnnotated> {
+        this.resolver = resolver
         val mapperAnnoType = resolver.getClassDeclarationByName<love.forte.kopper.annotation.Mapper>()
             ?: error("Cannot find Mapper annotation declaration.")
 
@@ -64,17 +65,39 @@ internal class KopperProcessor(
     }
 
     override fun finish() {
-        val generator = MapperGenerator(mapperDefs)
+        val generator = MapperGenerator(
+            environment = environment,
+            resolver = resolver,
+            mapperDefs
+        )
+
+        environment.logger.info("finish. generator: $generator")
+
         generator.generate()
+        // find all originating files
 
-        // TODO writeTo
+        val files = generator.files.map { (file, def) -> file.build() to def }
 
-        // mapperDefs.forEach { mapper ->
-        //     mapper.generate().writeTo(
-        //         codeGenerator = environment.codeGenerator,
-        //         aggregating = true,
-        //         originatingKSFiles = mapper.originatingKSFiles
-        //     )
-        // }
+        files.forEach { (file, def) ->
+            file.writeTo(
+                codeGenerator = environment.codeGenerator,
+                aggregating = true,
+                originatingKSFiles = def.originatingKSFiles()
+            )
+        }
+    }
+}
+
+private fun MapperDef.originatingKSFiles(): List<KSFile> {
+    return buildList {
+        sourceDeclaration.containingFile?.also(this::add)
+        for (action in declarationActions) {
+            action.sourceFun?.containingFile?.also(this::add)
+            action.target.declaration.containingFile?.also(this::add)
+
+            for (source in action.sources) {
+                source.declaration.containingFile?.also(this::add)
+            }
+        }
     }
 }

@@ -27,14 +27,14 @@ internal interface MapActionTargetProperty {
     val def: TargetPropertyDef
 
     /**
-     * propertyRefName,
+     * Property reference,
      * e.g.
      * `targetName.propertyName`,
      * `targetName?.propertyName`,
      * and if required:
      * `propertyName`
      */
-    val propertyRefName: CodeBlock
+    val propertyRef: CodeBlock
 
     // /**
     //  * emit a property setter with [read] into [writer]
@@ -48,9 +48,9 @@ internal data class MapActionTargetPropertyImpl(
     override val def: TargetPropertyDef,
 ) : MapActionTargetProperty {
 
-    override val propertyRefName: CodeBlock
+    override val propertyRef: CodeBlock
         get() {
-            // if it's required, just return property name
+            // if it's required, return property name
             if (def.isRequired) {
                 return CodeBlock.of("%L", def.name)
             }

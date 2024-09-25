@@ -56,12 +56,16 @@ internal class MapperDefResolveContext(
 
     val mapperArgs = mapperAnnotation.resolveMapperArgs()
     val mapperName = mapperArgs.targetName { sourceDeclaration.simpleName.asString() }
+    val mapperPackage = mapperArgs.packageName.ifBlank { sourceDeclaration.packageName.asString() }
 
     val actions: MutableList<MapperActionDef> = mutableListOf()
 
 
 }
 
+/**
+ * 将一个 [KSClassDeclaration] 分析为 [MapperDef]
+ */
 internal fun KSClassDeclaration.resolveToMapperDef(
     environment: SymbolProcessorEnvironment,
     resolver: Resolver,
@@ -78,14 +82,16 @@ internal fun KSClassDeclaration.resolveToMapperDef(
         mapperContext.resolveMapActionDefs(function)
     }
 
-
-    TODO()
-}
-
-internal class MapperActionDefResolveContext(
-    val mapperContext: MapperDefResolveContext,
-) {
-
+    return MapperDef(
+        environment = environment,
+        resolver = resolver,
+        sourceDeclaration = this,
+        simpleName = mapperContext.mapperName,
+        packageName = mapperContext.mapperPackage,
+        declarationActions = mapperContext.actions.toList(),
+        genTarget = mapperContext.mapperArgs.genTarget,
+        genVisibility = mapperContext.mapperArgs.visibility,
+    )
 }
 
 internal fun MapperDefResolveContext.resolveMapActionDefs(
@@ -147,15 +153,16 @@ internal fun MapperDefResolveContext.resolveActionSources(
                 declaration = receiverType.declaration.asClassDeclaration()!!,
                 incoming = MapActionIncoming(
                     name = null,
-                    type = receiverType
+                    type = receiverType,
+                    index = -1
                 ),
                 isMain = mainMarked
             )
         }?.also { resolveIndex++ }
 
-    function.parameters.forEach { parameter ->
+    function.parameters.forEachIndexed { index, parameter ->
         if (parameter.hasAnno(mapTargetAnnoType)) {
-            return@forEach
+            return@forEachIndexed
         }
 
         var isMain = false
@@ -176,7 +183,8 @@ internal fun MapperDefResolveContext.resolveActionSources(
             declaration = type.declaration.asClassDeclaration()!!,
             incoming = MapActionIncoming(
                 name = parameter.name?.asString(), // TODO null?
-                type = type
+                type = type,
+                index = index
             ),
             isMain = isMain
         )
@@ -186,12 +194,19 @@ internal fun MapperDefResolveContext.resolveActionSources(
         resolveIndex++
     }
 
-    receiverSource?.also { r ->
+    if (receiverSource != null) {
         if (!mainMarked) {
-            list.add(r.copy(isMain = true))
+            mainMarked = true
+            list.addFirst(receiverSource.copy(isMain = true))
         } else {
-            list.add(r)
+            list.addFirst(receiverSource)
         }
+    }
+
+    // 到最后也没有标记main的，取出参数第一个，标记为 main
+    if (!mainMarked) {
+        val first = list.removeFirst()
+        list.addFirst(first.copy(isMain = true))
     }
 
     return list.toList()
@@ -223,7 +238,8 @@ internal fun MapperDefResolveContext.resolveActionTarget(
             declaration = receiverType.declaration.asClassDeclaration()!!,
             incoming = MapActionIncoming(
                 name = null,
-                type = receiverType
+                type = receiverType,
+                index = -1
             ),
             returns = returnType != null,
             nullable = returnType != null && returnType.nullability.isNullable
@@ -232,9 +248,20 @@ internal fun MapperDefResolveContext.resolveActionTarget(
 
     // find @Map.Target parameter
     val targets = function.parameters.filter { it.hasAnno(mapTargetAnnoType) }
-    val targetParameter: KSValueParameter? = when (targets.size) {
-        1 -> targets[0]
-        0 -> null
+    val targetParameter: KSValueParameter?
+    val targetParameterIndex: Int
+
+    when (targets.size) {
+        1 -> {
+            targetParameter = targets[0]
+            targetParameterIndex = 0
+        }
+
+        0 -> {
+            targetParameter = null
+            targetParameterIndex = -2
+        }
+
         else -> error("@Map.Target can only have one or zero in $function")
     }
 
@@ -250,7 +277,8 @@ internal fun MapperDefResolveContext.resolveActionTarget(
             declaration = parameterType.declaration.asClassDeclaration()!!, // TODO null?
             incoming = MapActionIncoming(
                 name = targetParameter.name?.asString(), // TODO name?
-                type = parameterType
+                type = parameterType,
+                index = targetParameterIndex
             ),
             returns = returnType != null,
             nullable = returnType != null && returnType.nullability.isNullable
@@ -297,7 +325,8 @@ internal fun MapperDefResolveContext.resolveMapActionDefs(
         mapArgs = mapArgs,
         sources = sources,
         target = target,
-        sourceFun = source
+        sourceFun = source,
+        node = source,
     )
 
     actions.add(action)

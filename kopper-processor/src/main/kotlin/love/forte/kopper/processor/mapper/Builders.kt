@@ -19,10 +19,12 @@ package love.forte.kopper.processor.mapper
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
+import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
-import java.util.LinkedList
+import java.util.*
+import kotlin.collections.ArrayDeque
 
 // Mapper -> A Type annotated with @Mapper, e.g., an interface or an abstract class
 // MapperMapSet -> A function in Mapper.
@@ -84,18 +86,15 @@ internal class MapperWriter(
     fun tryTypeCast(
         code: CodeBlock,
         nullable: Boolean,
-        sourceType: KSType,
-        targetType: KSType,
+        sourceType: KSClassDeclaration,
+        targetType: KSClassDeclaration,
     ): CodeBlock {
-        val sourceType0 = sourceType.makeNotNullable()
-        val targetType0 = targetType.makeNotNullable()
-
         val builtIns = resolver.builtIns
         val con = if (nullable) "?." else "."
         fun codeBuilder(): CodeBlock.Builder = code.toBuilder().add(con)
-        return when (sourceType0) {
+        return when (sourceType) {
             // number
-            builtIns.numberType -> when (targetType0) {
+            builtIns.numberType -> when (targetType) {
                 ubType -> codeBuilder().add("toUByte()").build()
                 usType -> codeBuilder().add("toUShort()").build()
                 uiType -> codeBuilder().add("toUInt()").build()
@@ -110,7 +109,8 @@ internal class MapperWriter(
                 builtIns.stringType -> codeBuilder().add("toString()").build()
                 else -> code
             }
-            builtIns.byteType -> when (targetType0) {
+
+            builtIns.byteType -> when (targetType) {
                 ubType -> codeBuilder().add("toUByte()").build()
                 usType -> codeBuilder().add("toUShort()").build()
                 uiType -> codeBuilder().add("toUInt()").build()
@@ -124,7 +124,8 @@ internal class MapperWriter(
                 builtIns.stringType -> codeBuilder().add("toString()").build()
                 else -> code
             }
-            builtIns.shortType -> when (targetType0) {
+
+            builtIns.shortType -> when (targetType) {
                 ubType -> codeBuilder().add("toUByte()").build()
                 usType -> codeBuilder().add("toUShort()").build()
                 uiType -> codeBuilder().add("toUInt()").build()
@@ -138,7 +139,8 @@ internal class MapperWriter(
                 builtIns.stringType -> codeBuilder().add("toString()").build()
                 else -> code
             }
-            builtIns.intType -> when (targetType0) {
+
+            builtIns.intType -> when (targetType) {
                 ubType -> codeBuilder().add("toUByte()").build()
                 usType -> codeBuilder().add("toUShort()").build()
                 uiType -> codeBuilder().add("toUInt()").build()
@@ -152,7 +154,8 @@ internal class MapperWriter(
                 builtIns.stringType -> codeBuilder().add("toString()").build()
                 else -> code
             }
-            builtIns.longType -> when (targetType0) {
+
+            builtIns.longType -> when (targetType) {
                 ubType -> codeBuilder().add("toUByte()").build()
                 usType -> codeBuilder().add("toUShort()").build()
                 uiType -> codeBuilder().add("toUInt()").build()
@@ -169,7 +172,7 @@ internal class MapperWriter(
             }
 
             // u number
-            ubType -> when (targetType0) {
+            ubType -> when (targetType) {
                 usType -> codeBuilder().add("toUShort()").build()
                 uiType -> codeBuilder().add("toUInt()").build()
                 ulType -> codeBuilder().add("toULong()").build()
@@ -183,7 +186,8 @@ internal class MapperWriter(
                 builtIns.stringType -> codeBuilder().add("toString()").build()
                 else -> code
             }
-            usType -> when (targetType0) {
+
+            usType -> when (targetType) {
                 ubType -> codeBuilder().add("toUByte()").build()
                 uiType -> codeBuilder().add("toUInt()").build()
                 ulType -> codeBuilder().add("toULong()").build()
@@ -197,7 +201,8 @@ internal class MapperWriter(
                 builtIns.stringType -> codeBuilder().add("toString()").build()
                 else -> code
             }
-            uiType -> when (targetType0) {
+
+            uiType -> when (targetType) {
                 usType -> codeBuilder().add("toUShort()").build()
                 ubType -> codeBuilder().add("toUByte()").build()
                 ulType -> codeBuilder().add("toULong()").build()
@@ -211,7 +216,8 @@ internal class MapperWriter(
                 builtIns.stringType -> codeBuilder().add("toString()").build()
                 else -> code
             }
-            ulType -> when (targetType0) {
+
+            ulType -> when (targetType) {
                 usType -> codeBuilder().add("toUShort()").build()
                 ubType -> codeBuilder().add("toUByte()").build()
                 uiType -> codeBuilder().add("toUInt()").build()
@@ -227,7 +233,7 @@ internal class MapperWriter(
             }
 
             // string
-            builtIns.stringType -> when (targetType0) {
+            builtIns.stringType -> when (targetType) {
                 usType -> codeBuilder().add("toUShort()").build()
                 ubType -> codeBuilder().add("toUByte()").build()
                 uiType -> codeBuilder().add("toUInt()").build()
@@ -253,10 +259,10 @@ internal class MapperWriter(
     private val usType by lazy(LazyThreadSafetyMode.NONE) { resolver.us() }
 
     companion object {
-        private fun Resolver.ul(): KSType = getClassDeclarationByName<ULong>()!!.asStarProjectedType()
-        private fun Resolver.ui(): KSType = getClassDeclarationByName<UInt>()!!.asStarProjectedType()
-        private fun Resolver.ub(): KSType = getClassDeclarationByName<UByte>()!!.asStarProjectedType()
-        private fun Resolver.us(): KSType = getClassDeclarationByName<UShort>()!!.asStarProjectedType()
+        private fun Resolver.ul(): KSClassDeclaration = getClassDeclarationByName<ULong>()!!
+        private fun Resolver.ui(): KSClassDeclaration = getClassDeclarationByName<UInt>()!!
+        private fun Resolver.ub(): KSClassDeclaration = getClassDeclarationByName<UByte>()!!
+        private fun Resolver.us(): KSClassDeclaration = getClassDeclarationByName<UShort>()!!
     }
 }
 

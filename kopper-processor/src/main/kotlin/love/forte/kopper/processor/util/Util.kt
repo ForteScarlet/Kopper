@@ -122,6 +122,7 @@ internal fun KSType.hasAnno(targetAnoType: KSType): Boolean =
  */
 internal tailrec fun KSDeclaration.asClassDeclaration(): KSClassDeclaration? {
     if (this is KSClassDeclaration) return this
+    // TODO KSTypeParameter?
     if (this !is KSTypeAlias) return null
 
     return type.resolve().declaration.asClassDeclaration()

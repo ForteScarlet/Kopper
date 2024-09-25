@@ -1,7 +1,5 @@
 package love.forte.kopper.test
 
-import CastMapperImpl
-import NullableCastMapperImpl
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

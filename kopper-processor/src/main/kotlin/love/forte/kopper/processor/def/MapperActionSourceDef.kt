@@ -41,37 +41,57 @@ internal data class MapperActionSourceDef(
     val incoming: MapActionIncoming,
     val isMain: Boolean,
 ) {
+
+
     /**
      * find Single (current root) property
      */
     fun property(name: String): ReadablePropertyDef? {
-        return findPropertyDirect(name, null)
+        return findPropertyDirect(declaration, name, null)
     }
 
     fun property(path: Path): ReadablePropertyDef? {
-        return property(path, null)
+        return property(path, 1, declaration, path, null)
     }
 
-    private tailrec fun property(path: Path, parent: ReadablePropertyDef?): ReadablePropertyDef? {
-        val current = findPropertyDirect(path.name, parent)
-            ?: return null
+    private tailrec fun property(
+        full: Path,
+        number: Int,
+        declaration: KSClassDeclaration,
+        path: Path,
+        parent: ReadablePropertyDef?
+    ): ReadablePropertyDef? {
+        val current = findPropertyDirect(declaration, path.name, parent) ?: return null
 
         if (path.child == null) return current
 
-        return property(path.child, current)
+        val currDeclaration = current.declaration.asClassDeclaration()
+            ?: error(
+                "Source $this's property ${path.name} " +
+                    "with is the number $number in $full is not a class declaration."
+            )
+
+        return property(full, number + 1, currDeclaration, path.child, current)
+    }
+
+    override fun toString(): String {
+        return "MapperActionSourceDef(declaration=$declaration, incoming=$incoming, isMain=$isMain)"
     }
 }
 
 
 private fun MapperActionSourceDef.findPropertyDirect(
+    declaration: KSClassDeclaration,
     name: String,
     parent: ReadablePropertyDef?,
 ): ReadablePropertyDef? {
-    return findPropPropertyDirect(name, parent)
-        ?: findFunPropertyDirect(name, parent)
+
+    return findPropPropertyDirect(declaration, name, parent)
+        ?: findFunPropertyDirect(declaration, name, parent)
 }
 
 private fun MapperActionSourceDef.findPropPropertyDirect(
+    declaration: KSClassDeclaration,
     name: String,
     parent: ReadablePropertyDef?,
 ): ReadablePropertyDef? {
@@ -93,6 +113,7 @@ private fun MapperActionSourceDef.findPropPropertyDirect(
 }
 
 private fun MapperActionSourceDef.findFunPropertyDirect(
+    declaration: KSClassDeclaration,
     name: String,
     parent: ReadablePropertyDef?,
 ): ReadablePropertyDef? {

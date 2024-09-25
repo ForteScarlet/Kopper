@@ -52,13 +52,13 @@ internal data class PropertyRead(
     val type: KSType? = null,
 )
 
-internal fun PropertyRead.codeWithCast(writer: MapperWriter, target: KSType): CodeBlock {
-    return if (type != null) {
-        writer.tryTypeCast(code, nullable, type, target)
-    } else {
-        code
-    }
-}
+// internal fun PropertyRead.codeWithCast(writer: MapperWriter, target: KSType): CodeBlock {
+//     return if (type != null) {
+//         writer.tryTypeCast(code, nullable, type, target)
+//     } else {
+//         code
+//     }
+// }
 
 // internal data class InternalMapSetActionSourceProperty(
 //     override val source: MapperActionSource,
@@ -116,8 +116,7 @@ internal fun PropertyRead.codeWithCast(writer: MapperWriter, target: KSType): Co
 internal data class DirectMapActionSourceProperty(
     override val source: MapperActionSource,
     override val def: ReadablePropertyDef,
-    override val type: KSType,
-) : MapActionSourceTypedProperty {
+) : MapActionSourceProperty {
     override fun propertyAccessor(): CodeBlock {
         val sourceDef = source.def
         val sourceNullable = sourceDef.incoming.nullable

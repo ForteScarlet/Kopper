@@ -25,6 +25,7 @@ internal data class MapActionIncoming(
      */
     val name: String?,
     val type: KSType,
+    val index: Int, // if receiver (name == null), get -1
 ) {
     val nullable: Boolean
         get() = type.nullability.isNullable

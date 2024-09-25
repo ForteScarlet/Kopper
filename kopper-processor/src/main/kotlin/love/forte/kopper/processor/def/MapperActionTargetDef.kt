@@ -48,13 +48,20 @@ internal data class MapperActionTargetDef(
      */
     val nullable: Boolean,
 ) {
-    private val propertyCache = ConcurrentHashMap<String, ModifiablePropertyDef>()
+    private val propertyCache = ConcurrentHashMap<String, TargetPropertyDef>()
 
     /**
      * Find root property from [declaration] by [name].
      */
-    fun property(name: String): ModifiablePropertyDef? {
-        fun find(): ModifiablePropertyDef? {
+    fun property(name: String): TargetPropertyDef? {
+        fun find(): TargetPropertyDef? {
+            // 先找找 requires
+            requires?.forEach { require ->
+                if (require.name == name) {
+                    return require
+                }
+            }
+
             val foundProp = declaration.getAllProperties()
                 // 寻找名字匹配的，类型似乎无关紧要——毕竟名字是唯一的
                 .find { it.simpleName.asString() == name }
@@ -90,6 +97,7 @@ internal data class MapperActionTargetDef(
                 name = parameter.name!!.asString(),
                 declaration = type.declaration,
                 nullable = type.nullability.isNullable,
+                hasDefaultValue = parameter.hasDefault
             )
         }
     }

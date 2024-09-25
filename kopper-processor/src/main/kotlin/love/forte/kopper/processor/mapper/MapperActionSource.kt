@@ -16,14 +16,7 @@
 
 package love.forte.kopper.processor.mapper
 
-import com.google.devtools.ksp.processing.KSPLogger
-import com.google.devtools.ksp.symbol.KSFunctionDeclaration
-import com.google.devtools.ksp.symbol.KSPropertyDeclaration
-import com.google.devtools.ksp.symbol.KSType
-import com.google.devtools.ksp.symbol.Nullability
-import love.forte.kopper.annotation.PropertyType
 import love.forte.kopper.processor.def.MapperActionSourceDef
-import love.forte.kopper.processor.util.findProperty
 
 /**
  * A type as a mapping source.
@@ -32,11 +25,10 @@ internal data class MapperActionSource(
     var action: MapperAction,
     var def: MapperActionSourceDef,
 ) {
-    private val logger: KSPLogger
-        get() = action.def.environment.logger
-
-    private val properties: MutableMap<Path, MapActionSourceTypedProperty> = mutableMapOf()
-    private val subSources: MutableMap<String, MapperActionSource> = mutableMapOf()
+    fun property(path: Path): MapActionSourceProperty? {
+        val propDef = def.property(path) ?: return null
+        return DirectMapActionSourceProperty(this, propDef)
+    }
 
     // fun property(
     //     path: Path,

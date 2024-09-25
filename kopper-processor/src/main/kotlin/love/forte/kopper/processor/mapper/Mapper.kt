@@ -32,19 +32,17 @@ internal class Mapper(
     val def: MapperDef,
     val generator: MapperGenerator,
 ) {
-    val typeBuilder: TypeSpec.Builder
-
-    init {
-        typeBuilder = when (def.genTarget) {
-            MapperGenTarget.CLASS -> {
-                TypeSpec.classBuilder(def.simpleName)
-            }
-
-            MapperGenTarget.OBJECT -> {
-                TypeSpec.objectBuilder(def.simpleName)
-            }
+    private val typeBuilder: TypeSpec.Builder = when (def.genTarget) {
+        MapperGenTarget.CLASS -> {
+            TypeSpec.classBuilder(def.simpleName)
         }
 
+        MapperGenTarget.OBJECT -> {
+            TypeSpec.objectBuilder(def.simpleName)
+        }
+    }
+
+    init {
         when (def.genVisibility) {
             MapperGenVisibility.PUBLIC -> {
                 typeBuilder.addModifiers(PUBLIC)
@@ -63,21 +61,61 @@ internal class Mapper(
     }
 
     fun generate() {
-        val actionGenerator = MapperActionsGenerator(generator)
 
-        val actions = def.declarationActions.map { def ->
-            MapperAction(def = def, generator = actionGenerator).also { it.prepare() }
+        val actionGenerator = MapperActionsGenerator(
+            environment = def.environment,
+            resolver = def.resolver,
+            generator
+        )
+
+        // 遍历两遍，先 prepare，再 generate
+        def.declarationActions.forEach { def ->
+            val action = MapperAction(def = def, generator = actionGenerator)
+            actionGenerator.actions.add(action)
         }
 
-        for (action in actions) {
+        for (action in actionGenerator.actions) {
+            action.prepare()
+        }
+
+        do {
+            val buffers = actionGenerator.buffer.toList()
+            actionGenerator.buffer.clear()
+
+            for (buffer in buffers) {
+                // prepare buffer and add to actions (releases)
+                // prepare may add more buffers.
+                buffer.prepare()
+                actionGenerator.actions.add(buffer)
+            }
+
+        } while (actionGenerator.buffer.isNotEmpty())
+
+        // do {
+        //     var allPrepared = true
+        //
+        //     for (action in actionGenerator.actions) {
+        //         if (!action.prepared) {
+        //             def.environment.logger.info("Action $action not prepared. mark allPrepared = false")
+        //             allPrepared = false
+        //             action.prepare()
+        //         }
+        //     }
+        //     def.environment.logger.info("allPrepared = $allPrepared")
+        //
+        // } while (!allPrepared)
+
+        for (action in actionGenerator.actions) {
             action.generate()
+            typeBuilder.addFunction(action.funBuilder.build())
         }
 
-        for (generatedAction in actionGenerator.actions) {
-            typeBuilder.addFunction(generatedAction.funBuilder.build())
-        }
+        // for (generatedAction in actionGenerator.actions) {
+        //     typeBuilder.addFunction(generatedAction.funBuilder.build())
+        // }
 
         generator.addFile(
+            def,
             FileSpec.builder(def.packageName, def.simpleName).apply {
                 addType(typeBuilder.build())
             }
@@ -85,36 +123,36 @@ internal class Mapper(
     }
 
 
-    fun generate0() {
-
-        val mapperWriter = MapperWriter(
-            environment = def.environment,
-            resolver = def.resolver
-        )
-
-        // mapSets.forEach { mapSet ->
-        //     mapSet.emit(mapperWriter)
-        // }
-
-        mapperWriter.collect.values.sortedBy { it.isAncillary }.forEach { info ->
-            val funSpec = info.funSpec
-            if (info.isAncillary) {
-                val vi = setOf(PUBLIC, INTERNAL, PRIVATE, PROTECTED)
-                if (funSpec.modifiers.none { it in vi }) {
-                    funSpec.addModifiers(PRIVATE)
-                }
-            }
-
-            // mapperClass.addFunction(funSpec.build())
-        }
-
-        // File
-        val file = FileSpec.builder(def.packageName, def.simpleName).apply {
-            // addType(mapperClass.build())
-        }
-
-        generator.addFile(file)
-    }
+    // fun generate0() {
+    //
+    //     val mapperWriter = MapperWriter(
+    //         environment = def.environment,
+    //         resolver = def.resolver
+    //     )
+    //
+    //     // mapSets.forEach { mapSet ->
+    //     //     mapSet.emit(mapperWriter)
+    //     // }
+    //
+    //     mapperWriter.collect.values.sortedBy { it.isAncillary }.forEach { info ->
+    //         val funSpec = info.funSpec
+    //         if (info.isAncillary) {
+    //             val vi = setOf(PUBLIC, INTERNAL, PRIVATE, PROTECTED)
+    //             if (funSpec.modifiers.none { it in vi }) {
+    //                 funSpec.addModifiers(PRIVATE)
+    //             }
+    //         }
+    //
+    //         // mapperClass.addFunction(funSpec.build())
+    //     }
+    //
+    //     // File
+    //     val file = FileSpec.builder(def.packageName, def.simpleName).apply {
+    //         // addType(mapperClass.build())
+    //     }
+    //
+    //     generator.addFile(def, file)
+    // }
 }
 
 
