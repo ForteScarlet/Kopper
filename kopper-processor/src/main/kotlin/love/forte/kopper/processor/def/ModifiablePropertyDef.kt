@@ -55,8 +55,26 @@ internal data class RequiredParameterDef(
     override val name: String,
     override val declaration: KSDeclaration,
     override val nullable: Boolean,
+    val isVar: Boolean,
     val hasDefaultValue: Boolean,
 ) : TargetPropertyDef {
     override val isRequired: Boolean
         get() = true
+}
+
+/**
+ * 如果可以（有 `var`），则转为属性。
+ */
+internal fun RequiredParameterDef.asProperty(): ModifiablePropertyDef? {
+    if (!isVar) {
+        return null
+    }
+
+    return ModifiablePropertyDef(
+        environment = environment,
+        resolver = resolver,
+        name = name,
+        declaration = declaration,
+        nullable = nullable,
+    )
 }

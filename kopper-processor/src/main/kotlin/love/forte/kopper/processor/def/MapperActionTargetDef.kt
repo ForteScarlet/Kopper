@@ -19,6 +19,8 @@ package love.forte.kopper.processor.def
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.Modifier
+import com.squareup.kotlinpoet.KModifier
 import love.forte.kopper.processor.util.isNullable
 import java.util.concurrent.ConcurrentHashMap
 
@@ -97,6 +99,7 @@ internal data class MapperActionTargetDef(
                 name = parameter.name!!.asString(),
                 declaration = type.declaration,
                 nullable = type.nullability.isNullable,
+                isVar = parameter.isVar,
                 hasDefaultValue = parameter.hasDefault
             )
         }

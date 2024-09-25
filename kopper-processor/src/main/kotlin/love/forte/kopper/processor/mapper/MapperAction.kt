@@ -21,6 +21,7 @@ import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
+import love.forte.kopper.processor.def.*
 import love.forte.kopper.processor.def.MapArgs
 import love.forte.kopper.processor.def.MapperActionDef
 import love.forte.kopper.processor.def.MapperActionTargetDef
@@ -152,13 +153,26 @@ internal class MapperAction internal constructor(
 
         target.def.requires?.forEach { r ->
             val p = r.name.toPath()
+            val prop = if (target.def.incoming != null) {
+                // 有入参，不需要初始化，找到 var 的参数，视为普通可变属性
+                val propDef = r.asProperty() ?: return@forEach
+
+                MapActionTargetPropertyImpl(
+                    target = target,
+                    def = propDef
+                )
+            } else {
+                // 没有入参，那必须初始化
+                MapActionTargetPropertyImpl(
+                    target = target,
+                    def = r
+                )
+            }
+
             if (p !in rootTargets) {
                 rootTargets[p] = ArgsAndProp(
                     args = null,
-                    prop = MapActionTargetPropertyImpl(
-                        target = target,
-                        def = r
-                    )
+                    prop = prop
                 )
             }
         }
