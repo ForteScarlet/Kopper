@@ -61,6 +61,8 @@ internal data class MapperActionTargetDef(
             requires?.forEach { require ->
                 if (require.name == name) {
                     return require
+                    // TODO required? asProperty?
+                    // return require.asProperty()
                 }
             }
 
