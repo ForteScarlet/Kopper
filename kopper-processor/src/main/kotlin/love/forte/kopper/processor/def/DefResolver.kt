@@ -91,6 +91,7 @@ internal fun KSClassDeclaration.resolveToMapperDef(
         declarationActions = mapperContext.actions.toList(),
         genTarget = mapperContext.mapperArgs.genTarget,
         genVisibility = mapperContext.mapperArgs.visibility,
+        open = mapperContext.mapperArgs.open,
     )
 }
 

@@ -48,6 +48,7 @@ internal data class MapperDef(
 
     val genTarget: MapperGenTarget,
     val genVisibility: MapperGenVisibility,
+    val open: Boolean,
 ) {
     /**
      * The unique qualified name of this mapper.

@@ -25,7 +25,7 @@ public annotation class Mapper(
     // target
     val genTarget: MapperGenTarget = MapperGenTarget.CLASS,
     val visibility: MapperGenVisibility = MapperGenVisibility.INTERNAL,
-
+    val open: Boolean = false,
     // name
     val genTargetName: String = "", // same as Mapper and plus with prefix and suffix
     val genTargetNamePrefix: String = "",

@@ -89,7 +89,7 @@ internal class FromSourceMapperActionStatement(
         if (sourceClassDeclaration != null && targetClassDeclaration != null) {
             readerCode = resolver.tryTypeCast(
                 readerCode,
-                nullable = sourceNullable || sourceProperty.valueNullable,
+                nullable = sourceOrValueNullable,
                 sourceDeclaration = sourceClassDeclaration,
                 targetDeclaration = targetClassDeclaration,
             )
@@ -189,6 +189,11 @@ internal class RequiredInitialActionStatement(
                         builder.add(" ?: return")
                     }
                 }
+            }
+
+            else -> {
+                // 有入参、不是 nullable，说白了就是不需要target初始化
+
             }
         }
     }

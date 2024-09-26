@@ -22,36 +22,10 @@ import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import love.forte.kopper.processor.def.*
-import love.forte.kopper.processor.def.MapArgs
-import love.forte.kopper.processor.def.MapperActionDef
-import love.forte.kopper.processor.def.MapperActionTargetDef
-import love.forte.kopper.processor.def.ModifiablePropertyDef
 import love.forte.kopper.processor.util.asClassDeclaration
 import love.forte.kopper.processor.util.isMappableStructType
 import love.forte.kopper.processor.util.isNullable
 import java.util.*
-
-// internal data class MapperMapSetFunInfo(
-//     val name: String,
-//     val receiver: MapperMapSetFunReceiver?,
-//     val parameters: List<MapperMapSetFunParameter>,
-//     val returns: KSType?
-// )
-//
-// internal data class MapperMapSetFunReceiver(
-//     val type: KSType,
-//     val parameterType: MapperMapSetFunParameterType
-// )
-//
-// internal data class MapperMapSetFunParameter(
-//     val name: String?,
-//     val type: KSType,
-//     val parameterType: MapperMapSetFunParameterType,
-// )
-//
-// internal enum class MapperMapSetFunParameterType {
-//     SOURCE, TARGET
-// }
 
 /**
  * A set of `Map`s in a Mapper.
@@ -65,21 +39,19 @@ internal class MapperAction internal constructor(
     //  是否应该为其配置前缀？
     val defaultSourcePrefix: String? = null,
 ) {
-    var prepared = false
-        private set
-
     var funBuilder: FunSpec.Builder = FunSpec.builder(def.name)
 
-    val statements: LinkedList<MapperActionStatement> = LinkedList()
+    private val statements: LinkedList<MapperActionStatement> = LinkedList()
 
     var target: MapperActionTarget = MapperActionTarget(def.target, generator)
 
-    fun prepare() {
-        // 定义此函数
+    init {
         resolveCurrentFunDeclaration()
+    }
+
+    fun prepare() {
         // 预处理所有的 map，分离出可能存在的 sub action 并同样注册、prepare
         prepareMaps()
-        prepared = true
     }
 
     fun generate() {
@@ -236,6 +208,24 @@ internal class MapperAction internal constructor(
         val name = path.name
         val targetProperty = prop
             ?: target.property(name)
+                ?.let { targetProp ->
+                    // 如果是 require，且target不需要初始化（有入参、入餐不可为null）
+                    // 则尝试转为 property
+                    val def = targetProp.def
+                    if (
+                        def is RequiredParameterDef
+                        && target.def.incoming?.nullable == false
+                    ) {
+                        def.asProperty()?.let { reqProp ->
+                            MapActionTargetPropertyImpl(
+                                target = targetProp.target,
+                                def = reqProp
+                            )
+                        }
+                    } else {
+                        targetProp
+                    }
+                }
             ?: error("Unknown target $path in $target")
 
         if (mapArgs?.isEvalValid == true) {
@@ -269,10 +259,8 @@ internal class MapperAction internal constructor(
                 iter.remove()
             }
 
-            // TODO target 降级后，source 并未降级
-
             // 申请一个所需的 target 和 sources
-            val expectSourcesForIncoming = subArgs.mapIndexedTo(LinkedList()) { i, arg ->
+            val expectSourcesForIncoming = subArgs.mapTo(LinkedList()) { arg ->
                 val sourceName = arg.sourceName
                 val source = if (sourceName.isBlank()) {
                     // main
@@ -281,11 +269,7 @@ internal class MapperAction internal constructor(
                     def.sources.find { (it.incoming.name ?: "this") == sourceName }
                 } ?: error("Unknown source name $sourceName")
 
-                // if (source.incoming.name == null) {
-                //     source.copy(incoming = source.incoming.copy(name = "__s_$i"))
-                // } else {
                 source
-                // }
             }
 
 

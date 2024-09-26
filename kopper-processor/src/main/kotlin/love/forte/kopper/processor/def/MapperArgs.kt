@@ -23,9 +23,13 @@ import love.forte.kopper.processor.util.findArg
 import love.forte.kopper.processor.util.findEnumArg
 import love.forte.kopper.processor.util.findListArg
 
+/**
+ * @see love.forte.kopper.annotation.Mapper
+ */
 internal data class MapperArgs(
     val genTarget: MapperGenTarget,
     val visibility: MapperGenVisibility,
+    val open: Boolean,
 
     // name
     val genTargetName: String,
@@ -50,6 +54,7 @@ internal fun KSAnnotation.resolveMapperArgs(): MapperArgs {
     val genTargetNamePrefix: String = findArg("genTargetNamePrefix")!!
     val genTargetNameSuffix: String = findArg("genTargetNameSuffix")!!
     val genTargetPackages: List<String> = findListArg<String>("genTargetPackages")!!
+    val open: Boolean = findArg("open")!!
 
     return MapperArgs(
         genTarget = genTarget,
@@ -57,6 +62,7 @@ internal fun KSAnnotation.resolveMapperArgs(): MapperArgs {
         genTargetName = genTargetName,
         genTargetNamePrefix = genTargetNamePrefix,
         genTargetNameSuffix = genTargetNameSuffix,
-        genTargetPackages = genTargetPackages
+        genTargetPackages = genTargetPackages,
+        open = open,
     )
 }

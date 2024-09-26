@@ -76,7 +76,10 @@ internal class MapperActionsGenerator(
         sourcePrefix: String?,
     ): MapperAction {
         val expectArgs = mapArgs.sortedBy { it.target }
-        val foundAction = actions.find { action ->
+
+        val allSequence = actions.asSequence() + buffer.asSequence()
+
+        val foundAction = allSequence.find { action ->
             if (action.defaultSourcePrefix != sourcePrefix) {
                 return@find false
             }
@@ -147,6 +150,14 @@ internal class MapperActionsGenerator(
 
             true
         }
+
+        environment.logger.info("""
+            found action: $foundAction
+            from sources: $sources
+            for target:   $target
+            or name:      $name ($additionalIndex)
+            with args:    $mapArgs
+        """.trimIndent())
 
         if (foundAction != null) return foundAction
 

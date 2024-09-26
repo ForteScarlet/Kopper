@@ -17,6 +17,7 @@
 package love.forte.kopper.processor.mapper
 
 import com.google.devtools.ksp.symbol.ClassKind
+import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.KModifier.*
 import com.squareup.kotlinpoet.TypeSpec
@@ -43,6 +44,10 @@ internal class Mapper(
     }
 
     init {
+        initType()
+    }
+
+    private fun initType() {
         when (def.genVisibility) {
             MapperGenVisibility.PUBLIC -> {
                 typeBuilder.addModifiers(PUBLIC)
@@ -58,10 +63,25 @@ internal class Mapper(
         } else {
             typeBuilder.superclass(def.sourceDeclaration.toClassName())
         }
+
+        if (def.genTarget == MapperGenTarget.CLASS && def.open) {
+            typeBuilder.addModifiers(OPEN)
+        }
+
+        // add @Suppress("FunctionName", "LocalVariableName")
+        typeBuilder.addAnnotation(
+            AnnotationSpec.builder(Suppress::class)
+                .addMember(
+                    "%S, %S, %S",
+                    "FunctionName",
+                    "LocalVariableName",
+                    "RedundantSuppression",
+                )
+                .build()
+        )
     }
 
     fun generate() {
-
         val actionGenerator = MapperActionsGenerator(
             environment = def.environment,
             resolver = def.resolver,
@@ -91,28 +111,10 @@ internal class Mapper(
 
         } while (actionGenerator.buffer.isNotEmpty())
 
-        // do {
-        //     var allPrepared = true
-        //
-        //     for (action in actionGenerator.actions) {
-        //         if (!action.prepared) {
-        //             def.environment.logger.info("Action $action not prepared. mark allPrepared = false")
-        //             allPrepared = false
-        //             action.prepare()
-        //         }
-        //     }
-        //     def.environment.logger.info("allPrepared = $allPrepared")
-        //
-        // } while (!allPrepared)
-
         for (action in actionGenerator.actions) {
             action.generate()
             typeBuilder.addFunction(action.funBuilder.build())
         }
-
-        // for (generatedAction in actionGenerator.actions) {
-        //     typeBuilder.addFunction(generatedAction.funBuilder.build())
-        // }
 
         generator.addFile(
             def,

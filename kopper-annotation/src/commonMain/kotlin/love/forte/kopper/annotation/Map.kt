@@ -46,8 +46,9 @@ public annotation class Map(
     val eval: String = "",
     /**
      * The `nullable` for [eval]'s result.
+     * The default value is pessimistically `null` .
      */
-    val evalNullable: Boolean = false,
+    val evalNullable: Boolean = true,
 ) {
 
     /**
