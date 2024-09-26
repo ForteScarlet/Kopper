@@ -25,13 +25,9 @@ repositories {
     mavenCentral()
 }
 
-fun org.jetbrains.dokka.gradle.AbstractDokkaTask.configOutput(format: String) {
-    moduleName.set("Kopper")
-    outputDirectory.set(rootProject.file("build/dokka/$format"))
-}
-
 tasks.named<org.jetbrains.dokka.gradle.DokkaMultiModuleTask>("dokkaHtmlMultiModule") {
-    configOutput("html")
+    moduleName.set("Kopper")
+    outputDirectory.set(rootProject.file("build/dokka/html"))
 
     pluginConfiguration<DokkaBase, DokkaBaseConfiguration> {
         // footerMessage = "© 2022-${Year.now().value} <a href='https://github.com/simple-robot'>Simple Robot</a>. All rights reserved."

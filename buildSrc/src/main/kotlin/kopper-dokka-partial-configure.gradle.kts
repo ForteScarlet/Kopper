@@ -108,7 +108,7 @@ tasks.withType<DokkaTaskPartial>().configureEach {
             }
         }
 
-        externalDocumentation(uri("https://square.github.io/kotlinpoet/1.x/kotlinpoet/"))
-        externalDocumentation(uri("https://square.github.io/kotlinpoet/1.x/interop-ksp/"))
+        // externalDocumentation(uri("https://square.github.io/kotlinpoet/1.x/kotlinpoet/"))
+        // externalDocumentation(uri("https://square.github.io/kotlinpoet/1.x/interop-ksp/"))
     }
 }
