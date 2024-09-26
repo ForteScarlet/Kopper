@@ -34,25 +34,25 @@ internal class MapperDefResolveContext(
     val resolver: Resolver,
     mapperAnnotation: KSAnnotation,
 ) {
-    private val mapperAnnoDeclaration = resolver.getClassDeclarationByName<love.forte.kopper.annotation.Mapper>()
-        ?: error("Cannot find `Mapper` annotation declaration.")
+    // private val mapperAnnoDeclaration = resolver.getClassDeclarationByName<love.forte.kopper.annotation.Mapper>()
+    //     ?: error("Cannot find `Mapper` annotation declaration.")
+    //
+    // val mapperAnnoType = mapperAnnoDeclaration.asStarProjectedType()
 
-    val mapperAnnoType = mapperAnnoDeclaration.asStarProjectedType()
-
-    val mapAnnoDeclaration = resolver.getClassDeclarationByName<Map>()
+    private val mapAnnoDeclaration = resolver.getClassDeclarationByName<Map>()
         ?: error("Cannot find `Map` annotation declaration.")
 
     val mapAnnoType = mapAnnoDeclaration.asStarProjectedType()
 
-    val mapTargetAnnoDeclaration = resolver.getClassDeclarationByName<Map.Target>()
+    private val mapTargetAnnoDeclaration = resolver.getClassDeclarationByName<Map.Target>()
         ?: error("Cannot find `Map.Target` declaration.")
 
     val mapTargetAnnoType = mapTargetAnnoDeclaration.asStarProjectedType()
 
-    val mapMainSourceAnnoDeclaration = resolver.getClassDeclarationByName<Map.MainSource>()
+    private val mapMainSourceAnnoDeclaration = resolver.getClassDeclarationByName<Map.MainSource>()
         ?: error("Cannot find `Map.MainSource` declaration.")
 
-    val mapMainSourceAnnoType = mapTargetAnnoDeclaration.asStarProjectedType()
+    val mapMainSourceAnnoType = mapMainSourceAnnoDeclaration.asStarProjectedType()
 
     val mapperArgs = mapperAnnotation.resolveMapperArgs()
     val mapperName = mapperArgs.targetName { sourceDeclaration.simpleName.asString() }
