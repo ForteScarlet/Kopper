@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import org.jetbrains.dokka.gradle.DokkaTaskPartial
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 
@@ -46,4 +47,8 @@ tasks.test {
 }
 
 ksp {
+}
+
+tasks.withType<DokkaTaskPartial>().configureEach {
+    enabled = false
 }

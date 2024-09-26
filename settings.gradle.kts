@@ -5,4 +5,4 @@ rootProject.name = "Kopper"
 
 include(":kopper-annotation")
 include(":kopper-processor")
-include(":kopper-processor:kopper-processor-test")
+include(":kopper-processor-test")
