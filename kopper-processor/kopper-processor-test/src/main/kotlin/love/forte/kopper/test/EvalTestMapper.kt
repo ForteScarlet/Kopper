@@ -25,23 +25,23 @@ interface EvalTestMapper {
     data class Target(var name: String, var size: Long)
     data class Source(val name: String)
 
-    @Mapping(target = "size", eval = "5 + 6")
+    @Mapping(target = "size", eval = "1 + 1", evalNullable = false)
     fun Source.map1(): Target
 
-    @Mapping(target = "size", eval = "5 + 6")
+    @Mapping(target = "size", eval = "1 + 1", evalNullable = false)
     fun Source.map2(@Mapping.Target target: Target): Target
 
-    @Mapping(target = "size", eval = "5 + 6")
+    @Mapping(target = "size", eval = "1 + 1", evalNullable = false)
     fun Source.map3(@Mapping.Target target: Target)
 
 
-    @Mapping(target = "size", eval = "(5 + 6L)", evalNullable = true)
+    @Mapping(target = "size", eval = "1 + 1")
     fun Source.map2_1(): Target
 
-    @Mapping(target = "size", eval = "(5 + 6L)", evalNullable = true)
+    @Mapping(target = "size", eval = "1 + 1")
     fun Source.map2_2(@Mapping.Target target: Target): Target
 
-    @Mapping(target = "size", eval = "(5 + 6L)", evalNullable = true)
+    @Mapping(target = "size", eval = "1 + 1")
     fun Source.map2_3(@Mapping.Target target: Target)
 }
 

@@ -51,7 +51,7 @@ internal class EvalMapperActionStatement(
         val propertyRef = property.propertyRef
         builder.add(propertyRef)
         builder.add("·=·")
-        builder.add("( ")
+        builder.add("(")
         builder.add(CodeBlock.of(eval))
         builder.add(")")
 
@@ -115,7 +115,7 @@ internal class FromSourceMapperActionStatement(
             //// 直接添加 !!
             targetProperty.def.isRequired -> {
                 builder.add(targetPropertyRef)
-                builder.add("·=·( ")
+                builder.add("·=·(")
                 builder.add(readerCode)
                 builder.add(")!!")
             }
@@ -125,9 +125,11 @@ internal class FromSourceMapperActionStatement(
                 // (readCode).also { it -> %L = it }
                 builder.add("(")
                 builder.add(readerCode)
-                builder.add(")?.also·{ ")
+                builder.beginControlFlow(")?.also")
+                // builder.add(")?.also·{ ")
                 builder.add(targetPropertyRef)
-                builder.add("·=·it }")
+                builder.add("·=·it")
+                builder.endControlFlow()
             }
         }
     }

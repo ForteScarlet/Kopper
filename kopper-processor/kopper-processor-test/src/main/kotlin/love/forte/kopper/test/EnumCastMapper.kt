@@ -34,11 +34,16 @@ interface EnumCastMapper {
     }
 
     data class Source(val value: String, val type: SourceE)
-    data class Target(val value: String, val type: TargetE)
+    data class Source1(val value: String, val type: SourceE?)
+    data class Target(val value: String, var type: TargetE)
 
     // fun toTarget(source: Source): Target
     // fun Source.toTarget1(): Target
 
     fun toTarget0(source: Source, @Mapping.Target target: Target): Target
+    fun toTarget1(source: Source?, @Mapping.Target target: Target): Target
+
+    fun toTarget2(source: Source1, @Mapping.Target target: Target): Target
+    fun toTarget3(source: Source1?, @Mapping.Target target: Target): Target
     // fun Source.toTarget01(@Mapping.Target target: Target): Target
 }

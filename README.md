@@ -90,8 +90,6 @@ abstract class NestedMapper {
 
 An implementation will be generated for it:
 
-> Some formatting embellishments have been made for ease of presentation
-
 ```kotlin
 internal object NestedMapperImpl : NestedMapper() {
     override fun map(source: Source): Target {
@@ -154,8 +152,6 @@ interface NestedMapper {
 
 An implementation will be generated for it:
 
-> Some formatting embellishments have been made for ease of presentation
-
 ```kotlin
 internal class NestedMapperImpl : NestedMapper {
     override fun toTarget(
@@ -182,3 +178,52 @@ internal class NestedMapperImpl : NestedMapper {
     }
 }
 ```
+
+### Eval
+
+Define a mapper interface and use `@Mapping(eval)`:
+
+```kotlin
+data class Target(var name: String, var size: Long)
+data class Source(val name: String)
+
+@Mapper
+interface EvalTestMapper {
+    @Mapping(target = "size", eval = "1 + 1", evalNullable = false)
+    fun Source.map1(): Target
+
+    @Mapping(target = "size", eval = "1 + 1", evalNullable = false)
+    fun Source.map2(@Mapping.Target target: Target): Target
+
+    @Mapping(target = "size", eval = "1 + 1", evalNullable = false)
+    fun Source.map3(@Mapping.Target target: Target)
+}
+```
+
+An implementation will be generated for it:
+
+
+```Kotlin
+internal object EvalTestMapperImpl : EvalTestMapper {
+    override fun EvalTestMapper.Source.map1(): EvalTestMapper.Target {
+        val _t_0 = EvalTestMapper.Target(size = ( 1 + 1), name = this.name)
+        return _t_0
+    }
+
+    override fun EvalTestMapper.Source.map2(target: EvalTestMapper.Target): EvalTestMapper.Target {
+        /* The input parameter of target already exists and cannot be null, so it doesn't need to be
+            initialised. */
+        target.size = (1 + 1)
+        target.name = this.name
+        return target
+    }
+
+    override fun EvalTestMapper.Source.map3(target: EvalTestMapper.Target) {
+        /* The input parameter of target already exists and cannot be null, so it doesn't need to be
+            initialised. */
+        target.size = (1 + 1)
+        target.name = this.name
+    }
+}
+```
+
