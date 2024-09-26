@@ -16,16 +16,12 @@
 
 package love.forte.kopper.processor.def
 
+import com.google.devtools.ksp.symbol.KSNode
+import kotlin.reflect.KProperty
 
-/**
- *
- * 从哪个属性、转化为哪个？
- *
- *
- * @author ForteScarlet
- */
-internal interface MapperActionMapDef {
-    // 必要的属性转化（构造）
-    // 普通的属性转化
-    // 前二者其中包括：嵌套的结构体类型转化
-}
+internal data class NodeArg<V>(
+    val value: V,
+    val node: KSNode?
+)
+
+internal inline operator fun <reified V> NodeArg<V>.getValue(thisRef: Any?, property: KProperty<*>): V = value

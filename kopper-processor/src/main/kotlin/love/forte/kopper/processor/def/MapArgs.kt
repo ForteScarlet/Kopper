@@ -17,6 +17,7 @@
 package love.forte.kopper.processor.def
 
 import com.google.devtools.ksp.symbol.KSAnnotation
+import com.google.devtools.ksp.symbol.KSNode
 import love.forte.kopper.annotation.Map
 import love.forte.kopper.annotation.PropertyType
 import love.forte.kopper.processor.util.findArg
@@ -26,40 +27,42 @@ import love.forte.kopper.processor.util.findEnumArg
  * Map args from annotation [Map].
  */
 internal data class MapArgs(
-    val target: String,
-    val source: String,
-    val sourceName: String,
-    val sourceType: PropertyType,
-    val ignore: Boolean,
-    val eval: String,
+    val target: NodeArg<String>,
+    val source: NodeArg<String>,
+    val sourceName: NodeArg<String>,
+    val sourceType: NodeArg<PropertyType>,
+    val ignore: NodeArg<Boolean>,
+    val eval: NodeArg<String>,
     /**
      * The `nullable` for [eval]'s result.
      */
-    val evalNullable: Boolean = false,
+    val evalNullable: NodeArg<Boolean>,
+    val node: KSNode?
 ) {
     val isEvalValid: Boolean
-        get() = eval.isNotBlank()
+        get() = eval.value.isNotBlank()
 }
 
 /**
  * @see love.forte.kopper.annotation.Map
  */
 internal fun KSAnnotation.resolveToMapArgs(): MapArgs {
-    val target: String = findArg("target")!!
-    val source: String = findArg("source")!!
-    val sourceName: String = findArg("sourceName")!!
-    val sourceType: PropertyType = findEnumArg<PropertyType>("sourceType")!!
-    val ignore: Boolean = findArg("ignore")!!
-    val eval: String = findArg("eval")!!
-    val evalNullable: Boolean = findArg("evalNullable")!!
+    val target: NodeArg<String> = findArg("target")!!
+    val source: NodeArg<String> = findArg("source")!!
+    val sourceName: NodeArg<String> = findArg("sourceName")!!
+    val sourceType: NodeArg<PropertyType> = findEnumArg<PropertyType>("sourceType")!!
+    val ignore: NodeArg<Boolean> = findArg("ignore")!!
+    val eval: NodeArg<String> = findArg("eval")!!
+    val evalNullable: NodeArg<Boolean> = findArg("evalNullable")!!
 
     return MapArgs(
         target = target,
-        source = if (Map.SAME_AS_TARGET == source) target else source,
+        source = if (Map.SAME_AS_TARGET == source.value) target else source,
         sourceName = sourceName,
         sourceType = sourceType,
         ignore = ignore,
         eval = eval,
         evalNullable = evalNullable,
+        node = this
     )
 }

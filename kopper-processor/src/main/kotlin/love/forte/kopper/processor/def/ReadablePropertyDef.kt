@@ -18,8 +18,8 @@ package love.forte.kopper.processor.def
 
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
-import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSDeclaration
+import com.google.devtools.ksp.symbol.KSNode
 import com.squareup.kotlinpoet.CodeBlock
 import love.forte.kopper.annotation.PropertyType
 
@@ -46,7 +46,8 @@ internal data class ReadablePropertyDef(
     val nullable: Boolean,
 
     // 如果是嵌套的，它应该有个父属性，否则是个根属性
-    val parent: ReadablePropertyDef?
+    val parent: ReadablePropertyDef?,
+    val node: KSNode?,
 ) {
     override fun toString(): String {
         return buildString {

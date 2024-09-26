@@ -19,6 +19,7 @@ package love.forte.kopper.processor.util
 import com.google.devtools.ksp.processing.KSBuiltIns
 import com.google.devtools.ksp.symbol.*
 import love.forte.kopper.annotation.PropertyType
+import love.forte.kopper.processor.def.NodeArg
 
 internal const val EVAL: String = "eval"
 
@@ -80,31 +81,69 @@ internal inline fun <T> findFunProperty(
         ?.let(block)
 }
 
-internal inline fun <reified T> KSAnnotation.findArg(name: String): T? {
-    return (
-        arguments.find { it.name?.asString() == name }?.value
-            ?: defaultArguments.find { it.name?.asString() == name }?.value
-        )
-        as? T
+internal inline fun <reified T> KSAnnotation.findArg(name: String): NodeArg<T>? {
+    val argument = (
+        arguments.find { it.name?.asString() == name }
+            ?: defaultArguments.find { it.name?.asString() == name }
+        ) ?: return null
+
+    val value = argument.value as? T
+        ?: return null
+
+    return NodeArg(value, argument)
+
+    // return (
+    //     arguments.find { it.name?.asString() == name }?.value
+    //         ?: defaultArguments.find { it.name?.asString() == name }?.value
+    //     )
+    //     as? T
 }
 
-internal inline fun <reified T> KSAnnotation.findListArg(name: String): List<T>? {
+// internal inline fun <reified T> KSAnnotation.findArg(name: String): T? {
+//     return (
+//         arguments.find { it.name?.asString() == name }?.value
+//             ?: defaultArguments.find { it.name?.asString() == name }?.value
+//         )
+//         as? T
+// }
+
+internal inline fun <reified T> KSAnnotation.findListArg(name: String): NodeArg<List<T>>? {
     return findArg<List<T>>(name)
 }
 
-internal inline fun <reified T : Enum<T>> KSAnnotation.findEnumArg(name: String): T? {
-    val value = (
-        arguments.find { it.name?.asString() == name }?.value
-            ?: defaultArguments.find { it.name?.asString() == name }?.value
-        ) ?: return null
+// internal inline fun <reified T> KSAnnotation.findListArg(name: String): List<T>? {
+//     return findArg<List<T>>(name)
+// }
 
-    if (value is T) return value
+internal inline fun <reified T : Enum<T>> KSAnnotation.findEnumArg(name: String): NodeArg<T>? {
+    val argument = (
+        arguments.find { it.name?.asString() == name }
+            ?: defaultArguments.find { it.name?.asString() == name }
+        ) ?: return null
+    val value = argument.value
+
+    if (value is T) return NodeArg(value, argument)
+
     // https://github.com/google/ksp/issues/429
     val enumValue = ((value as? KSType)?.declaration as? KSClassDeclaration)?.simpleName?.asString()
         ?: return null
 
-    return enumValueOf<T>(enumValue)
+    return NodeArg(enumValueOf<T>(enumValue), argument)
 }
+
+// internal inline fun <reified T : Enum<T>> KSAnnotation.findEnumArg(name: String): T? {
+//     val value = (
+//         arguments.find { it.name?.asString() == name }?.value
+//             ?: defaultArguments.find { it.name?.asString() == name }?.value
+//         ) ?: return null
+//
+//     if (value is T) return value
+//     // https://github.com/google/ksp/issues/429
+//     val enumValue = ((value as? KSType)?.declaration as? KSClassDeclaration)?.simpleName?.asString()
+//         ?: return null
+//
+//     return enumValueOf<T>(enumValue)
+// }
 
 internal fun KSAnnotated.hasAnno(targetAnoType: KSType): Boolean =
     annotations.any { ano ->

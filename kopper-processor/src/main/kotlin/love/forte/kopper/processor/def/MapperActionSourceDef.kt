@@ -19,6 +19,7 @@ package love.forte.kopper.processor.def
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSNode
 import love.forte.kopper.annotation.PropertyType
 import love.forte.kopper.processor.mapper.Path
 import love.forte.kopper.processor.util.asClassDeclaration
@@ -40,6 +41,7 @@ internal data class MapperActionSourceDef(
      */
     val incoming: MapActionIncoming,
     val isMain: Boolean,
+    val node: KSNode?,
 ) {
 
 
@@ -109,6 +111,7 @@ private fun MapperActionSourceDef.findPropPropertyDirect(
         nullable = type.nullability.isNullable,
         propertyType = PropertyType.PROPERTY,
         parent = parent,
+        node = firstProp,
     )
 }
 
@@ -137,5 +140,6 @@ private fun MapperActionSourceDef.findFunPropertyDirect(
         nullable = type.nullability.isNullable,
         propertyType = PropertyType.FUNCTION,
         parent = parent,
+        node = firstFun,
     )
 }

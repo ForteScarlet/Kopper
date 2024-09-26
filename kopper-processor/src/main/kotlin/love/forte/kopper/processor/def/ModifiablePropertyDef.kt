@@ -19,6 +19,7 @@ package love.forte.kopper.processor.def
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSDeclaration
+import com.google.devtools.ksp.symbol.KSNode
 
 internal sealed interface TargetPropertyDef {
     val isRequired: Boolean
@@ -27,6 +28,7 @@ internal sealed interface TargetPropertyDef {
     val name: String
     val declaration: KSDeclaration
     val nullable: Boolean
+    val node: KSNode?
 }
 
 /**
@@ -41,6 +43,7 @@ internal data class ModifiablePropertyDef(
     override val name: String,
     override val declaration: KSDeclaration,
     override val nullable: Boolean,
+    override val node: KSNode?,
 ) : TargetPropertyDef {
     override val isRequired: Boolean
         get() = false
@@ -55,6 +58,7 @@ internal data class RequiredParameterDef(
     override val name: String,
     override val declaration: KSDeclaration,
     override val nullable: Boolean,
+    override val node: KSNode?,
     val isVar: Boolean,
     val hasDefaultValue: Boolean,
 ) : TargetPropertyDef {
@@ -76,5 +80,6 @@ internal fun RequiredParameterDef.asProperty(): ModifiablePropertyDef? {
         name = name,
         declaration = declaration,
         nullable = nullable,
+        node = node,
     )
 }

@@ -19,8 +19,7 @@ package love.forte.kopper.processor.def
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.Modifier
-import com.squareup.kotlinpoet.KModifier
+import com.google.devtools.ksp.symbol.KSNode
 import love.forte.kopper.processor.util.isNullable
 import java.util.concurrent.ConcurrentHashMap
 
@@ -49,6 +48,8 @@ internal data class MapperActionTargetDef(
      * If [returns] can be null.
      */
     val nullable: Boolean,
+
+    val node: KSNode?,
 ) {
     private val propertyCache = ConcurrentHashMap<String, TargetPropertyDef>()
 
@@ -78,6 +79,7 @@ internal data class MapperActionTargetDef(
                 name = name,
                 declaration = type.declaration,
                 nullable = type.nullability.isNullable,
+                node = foundProp,
             )
         }
 
@@ -101,8 +103,9 @@ internal data class MapperActionTargetDef(
                 name = parameter.name!!.asString(),
                 declaration = type.declaration,
                 nullable = type.nullability.isNullable,
+                node = parameter,
                 isVar = parameter.isVar,
-                hasDefaultValue = parameter.hasDefault
+                hasDefaultValue = parameter.hasDefault,
             )
         }
     }

@@ -16,6 +16,7 @@
 
 package love.forte.kopper.processor.def
 
+import com.google.devtools.ksp.symbol.KSNode
 import com.google.devtools.ksp.symbol.KSType
 import love.forte.kopper.processor.util.isNullable
 
@@ -26,6 +27,7 @@ internal data class MapActionIncoming(
     val name: String?,
     val type: KSType,
     val index: Int, // if receiver (name == null), get -1
+    val node: KSNode?,
 ) {
     val nullable: Boolean
         get() = type.nullability.isNullable

@@ -17,6 +17,7 @@
 package love.forte.kopper.processor.def
 
 import com.google.devtools.ksp.symbol.KSAnnotation
+import com.google.devtools.ksp.symbol.KSNode
 import love.forte.kopper.annotation.MapperGenTarget
 import love.forte.kopper.annotation.MapperGenVisibility
 import love.forte.kopper.processor.util.findArg
@@ -27,21 +28,22 @@ import love.forte.kopper.processor.util.findListArg
  * @see love.forte.kopper.annotation.Mapper
  */
 internal data class MapperArgs(
-    val genTarget: MapperGenTarget,
-    val visibility: MapperGenVisibility,
-    val open: Boolean,
+    val genTarget: NodeArg<MapperGenTarget>,
+    val visibility: NodeArg<MapperGenVisibility>,
+    val open: NodeArg<Boolean>,
 
     // name
-    val genTargetName: String,
-    val genTargetNamePrefix: String,
-    val genTargetNameSuffix: String,
-    val genTargetPackages: List<String>,
+    val genTargetName: NodeArg<String>,
+    val genTargetNamePrefix: NodeArg<String>,
+    val genTargetNameSuffix: NodeArg<String>,
+    val genTargetPackages: NodeArg<List<String>>,
+    val node: KSNode?,
 ) {
-    val packageName: String = genTargetPackages.joinToString(".")
+    val packageName: String = genTargetPackages.value.joinToString(".")
     inline fun targetName(declarationSimpleName: () -> String): String =
-        genTargetNamePrefix +
-            (genTargetName.takeIf { it.isNotEmpty() } ?: declarationSimpleName()) +
-            genTargetNameSuffix
+        genTargetNamePrefix.value +
+            (genTargetName.value.takeIf { it.isNotEmpty() } ?: declarationSimpleName()) +
+            genTargetNameSuffix.value
 
 }
 
@@ -50,11 +52,11 @@ internal fun KSAnnotation.resolveMapperArgs(): MapperArgs {
     val visibility = findEnumArg<MapperGenVisibility>("visibility")!!
 
     // Name-related arguments
-    val genTargetName: String = findArg("genTargetName")!!
-    val genTargetNamePrefix: String = findArg("genTargetNamePrefix")!!
-    val genTargetNameSuffix: String = findArg("genTargetNameSuffix")!!
-    val genTargetPackages: List<String> = findListArg<String>("genTargetPackages")!!
-    val open: Boolean = findArg("open")!!
+    val genTargetName: NodeArg<String> = findArg("genTargetName")!!
+    val genTargetNamePrefix: NodeArg<String> = findArg("genTargetNamePrefix")!!
+    val genTargetNameSuffix: NodeArg<String> = findArg("genTargetNameSuffix")!!
+    val genTargetPackages: NodeArg<List<String>> = findListArg<String>("genTargetPackages")!!
+    val open: NodeArg<Boolean> = findArg("open")!!
 
     return MapperArgs(
         genTarget = genTarget,
@@ -64,5 +66,6 @@ internal fun KSAnnotation.resolveMapperArgs(): MapperArgs {
         genTargetNameSuffix = genTargetNameSuffix,
         genTargetPackages = genTargetPackages,
         open = open,
+        node = this,
     )
 }

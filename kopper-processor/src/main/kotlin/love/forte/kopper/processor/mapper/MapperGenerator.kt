@@ -75,7 +75,7 @@ internal class MapperActionsGenerator(
         node: KSNode?,
         sourcePrefix: String?,
     ): MapperAction {
-        val expectArgs = mapArgs.sortedBy { it.target }
+        val expectArgs = mapArgs.sortedBy { it.target.value }
 
         val allSequence = actions.asSequence() + buffer.asSequence()
 
@@ -85,7 +85,7 @@ internal class MapperActionsGenerator(
             }
 
             // mapArgs 相同
-            val actionArgs = action.def.mapArgs.sortedBy { it.target }
+            val actionArgs = action.def.mapArgs.sortedBy { it.target.value }
 
             if (actionArgs.size != expectArgs.size) {
                 return@find false
@@ -151,13 +151,15 @@ internal class MapperActionsGenerator(
             true
         }
 
-        environment.logger.info("""
+        environment.logger.info(
+            """
             found action: $foundAction
             from sources: $sources
             for target:   $target
             or name:      $name ($additionalIndex)
             with args:    $mapArgs
-        """.trimIndent())
+        """.trimIndent()
+        )
 
         if (foundAction != null) return foundAction
 

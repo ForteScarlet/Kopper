@@ -21,6 +21,7 @@ import kotlin.reflect.KClass
 /**
  * A mapper marker.
  */
+@Target(AnnotationTarget.CLASS, AnnotationTarget.ANNOTATION_CLASS)
 public annotation class Mapper(
     // target
     val genTarget: MapperGenTarget = MapperGenTarget.OBJECT,

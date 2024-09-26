@@ -48,6 +48,7 @@ internal data class MapperDef(
     val declarationActions: List<MapperActionDef>,
 
     val mapperAnnotation: KSAnnotation?,
+    val mapperArgs: MapperArgs?,
 
     val genTarget: MapperGenTarget,
     val genVisibility: MapperGenVisibility,

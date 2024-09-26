@@ -107,7 +107,7 @@ internal class MapperAction internal constructor(
     private data class ArgsAndProp(val args: MapArgs?, val prop: MapActionTargetProperty?)
 
     private fun prepareMaps() {
-        val mapArgsWithTargetPath = def.mapArgs.toMutableList().associateBy { it.target.toPath() }
+        val mapArgsWithTargetPath = def.mapArgs.toMutableList().associateBy { it.target.value.toPath() }
 
         val rootTargets: MutableMap<Path, ArgsAndProp> =
             mapArgsWithTargetPath
@@ -165,7 +165,8 @@ internal class MapperAction internal constructor(
                             resolver = def.resolver,
                             name = name,
                             declaration = type.declaration,
-                            nullable = type.nullability.isNullable
+                            nullable = type.nullability.isNullable,
+                            node = prop
                         )
                     )
                 )
@@ -230,8 +231,8 @@ internal class MapperAction internal constructor(
 
         if (mapArgs?.isEvalValid == true) {
             val eval = EvalMapperActionStatement(
-                eval = mapArgs.eval,
-                evalNullable = mapArgs.evalNullable,
+                eval = mapArgs.eval.value,
+                evalNullable = mapArgs.evalNullable.value,
                 property = targetProperty
             )
 
@@ -253,7 +254,7 @@ internal class MapperAction internal constructor(
             while (iter.hasNext()) {
                 val (key, value) = iter.next()
                 if (key.name == name) {
-                    val newValue = value.copy(target = key.child!!.paths)
+                    val newValue = value.copy(target = value.target.copy(value = key.child!!.paths))
                     subArgs.add(newValue)
                 }
                 iter.remove()
@@ -261,7 +262,7 @@ internal class MapperAction internal constructor(
 
             // 申请一个所需的 target 和 sources
             val expectSourcesForIncoming = subArgs.mapTo(LinkedList()) { arg ->
-                val sourceName = arg.sourceName
+                val sourceName by arg.sourceName
                 val source = if (sourceName.isBlank()) {
                     // main
                     def.sources.find { it.isMain }
@@ -300,6 +301,7 @@ internal class MapperAction internal constructor(
                 incoming = null,
                 returns = true,
                 nullable = targetProperty.def.nullable,
+                node = def.node
             )
 
             val subAction = this.generator.requestAction(
@@ -325,20 +327,20 @@ internal class MapperAction internal constructor(
             }
         } else {
             // 普通类型，尝试直接赋值 的 statement
-            val sourceDef = if (mapArgs?.sourceName?.isNotBlank() == true) {
-                def.sources.find { it.incoming.name == mapArgs.sourceName }
+            val sourceDef = if (mapArgs?.sourceName?.value?.isNotBlank() == true) {
+                def.sources.find { it.incoming.name == mapArgs.sourceName.value }
             } else {
                 def.sources.find { it.isMain }
             } ?: run {
                 val msg =
-                    "Source in ${mapArgs?.sourceName?.ifBlank { "<main>" } ?: "<main>"} for property ${targetProperty.def} not found. arg: $mapArgs"
+                    "Source in ${mapArgs?.sourceName?.value?.ifBlank { "<main>" } ?: "<main>"} for property ${targetProperty.def} not found. arg: $mapArgs"
                 def.environment.logger.error(msg, def.node)
                 error(msg)
             }
 
             val source = MapperActionSource(this, sourceDef)
 
-            val sourcePropertyPath = mapArgs?.source?.takeUnless { it.isBlank() }?.toPath()
+            val sourcePropertyPath = mapArgs?.source?.value?.takeUnless { it.isBlank() }?.toPath()
                 ?: defaultSourcePrefix?.let { it.toPath() + path } ?: path
 
             val sourceProperty = source.property(sourcePropertyPath)

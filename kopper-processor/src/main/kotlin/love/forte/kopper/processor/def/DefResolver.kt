@@ -90,9 +90,10 @@ internal fun KSClassDeclaration.resolveToMapperDef(
         packageName = mapperContext.mapperPackage,
         declarationActions = mapperContext.actions.toList(),
         mapperAnnotation = mapperAnnotation,
-        genTarget = mapperContext.mapperArgs.genTarget,
-        genVisibility = mapperContext.mapperArgs.visibility,
-        open = mapperContext.mapperArgs.open,
+        mapperArgs = mapperContext.mapperArgs,
+        genTarget = mapperContext.mapperArgs.genTarget.value,
+        genVisibility = mapperContext.mapperArgs.visibility.value,
+        open = mapperContext.mapperArgs.open.value,
     )
 }
 
@@ -156,9 +157,11 @@ internal fun MapperDefResolveContext.resolveActionSources(
                 incoming = MapActionIncoming(
                     name = null,
                     type = receiverType,
-                    index = -1
+                    index = -1,
+                    node = receiver,
                 ),
-                isMain = mainMarked
+                isMain = mainMarked,
+                node = receiver,
             )
         }?.also { resolveIndex++ }
 
@@ -186,9 +189,11 @@ internal fun MapperDefResolveContext.resolveActionSources(
             incoming = MapActionIncoming(
                 name = parameter.name?.asString(), // TODO null?
                 type = type,
-                index = index
+                index = index,
+                node = parameter,
             ),
-            isMain = isMain
+            isMain = isMain,
+            node = parameter,
         )
 
         list.add(def)
@@ -241,10 +246,12 @@ internal fun MapperDefResolveContext.resolveActionTarget(
             incoming = MapActionIncoming(
                 name = null,
                 type = receiverType,
-                index = -1
+                index = -1,
+                node = targetReceiver,
             ),
             returns = returnType != null,
-            nullable = returnType != null && returnType.nullability.isNullable
+            nullable = returnType != null && returnType.nullability.isNullable,
+            node = targetReceiver
         )
     }
 
@@ -280,10 +287,12 @@ internal fun MapperDefResolveContext.resolveActionTarget(
             incoming = MapActionIncoming(
                 name = targetParameter.name?.asString(), // TODO name?
                 type = parameterType,
-                index = targetParameterIndex
+                index = targetParameterIndex,
+                node = targetParameter,
             ),
             returns = returnType != null,
-            nullable = returnType != null && returnType.nullability.isNullable
+            nullable = returnType != null && returnType.nullability.isNullable,
+            node = targetParameter
         )
     }
 
@@ -309,6 +318,7 @@ internal fun MapperDefResolveContext.resolveActionTarget(
         incoming = null,
         returns = true,
         nullable = returnType.nullability.isNullable,
+        node = function
     )
 }
 
