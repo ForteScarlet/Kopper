@@ -62,14 +62,14 @@ interface SubStructWithMapMapper {
 }
 
 @Mapper
-interface SubStructWithoutMapMapper {
+abstract class NestedWithoutMapMapper {
     data class Source(val value: SourceSub, val target: String)
     data class SourceSub(val number: Int, val name: String)
 
     data class Target(val value: TargetSub, val target: String)
     data class TargetSub(val number: Long, val name: String)
 
-    fun map(source: Source): Target
+    abstract fun map(source: Source): Target
 
-    fun Source.map1(): Target
+    abstract fun Source.map1(): Target
 }

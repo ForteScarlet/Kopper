@@ -49,8 +49,8 @@ internal class EvalMapperActionStatement(
     override fun emit(builder: CodeBlock.Builder) {
         val propertyRef = property.propertyRef
         builder.add(propertyRef)
-        builder.add(" = ")
-        builder.add("(")
+        builder.add("·=·")
+        builder.add("( ")
         builder.add(CodeBlock.of(eval))
         builder.add(")")
 
@@ -102,7 +102,7 @@ internal class FromSourceMapperActionStatement(
                 builder.add(targetPropertyRef)
                 // target 是 nullable，
                 // 或者同时 source 也是 non-null
-                builder.add(" = ")
+                builder.add("·=·")
                 builder.add(readerCode)
             }
 
@@ -113,7 +113,7 @@ internal class FromSourceMapperActionStatement(
             //// 直接添加 !!
             targetProperty.def.isRequired -> {
                 builder.add(targetPropertyRef)
-                builder.add(" = (")
+                builder.add("·=·( ")
                 builder.add(readerCode)
                 builder.add(")!!")
             }
@@ -123,9 +123,9 @@ internal class FromSourceMapperActionStatement(
                 // (readCode).also { it -> %L = it }
                 builder.add("(")
                 builder.add(readerCode)
-                builder.add(")?.also { ")
+                builder.add(")?.also·{ ")
                 builder.add(targetPropertyRef)
-                builder.add(" = it }")
+                builder.add("·=·it }")
             }
         }
     }
@@ -170,7 +170,7 @@ internal class RequiredInitialActionStatement(
             // 没有入参，直接初始化
             targetDef.incoming == null -> {
                 // TODO
-                builder.add("val %L = ", name)
+                builder.add("val %L·=·", name)
                 builder.add(initialCode)
             }
             // 有入参、入参 nullable，则参考返回值
@@ -178,15 +178,15 @@ internal class RequiredInitialActionStatement(
                 when {
                     // 有返回值，返回值 nullable，那么如果入参为null则直接return null
                     targetDef.returns && targetDef.nullable -> {
-                        builder.add("val %L = ", name)
+                        builder.add("val %L·=·", name)
                         builder.add(initialCode)
-                        builder.add(" ?: return null")
+                        builder.add(" ?:·return null")
                     }
                     // 没有返回值，则如果入参为null直接 return
                     !targetDef.returns && targetDef.nullable -> {
-                        builder.add("val %L = ", name)
+                        builder.add("val %L·=·", name)
                         builder.add(initialCode)
-                        builder.add(" ?: return")
+                        builder.add(" ?:·return")
                     }
                 }
             }
@@ -268,7 +268,7 @@ internal class SubActionActionStatement(
             incomingNames
                 .forEachIndexed { index, pair ->
                     val (name, value) = pair ?: return@forEachIndexed
-                    add("%L = %L", name, value.def.incoming.name ?: "this")
+                    add("%L·=·%L", name, value.def.incoming.name ?: "this")
                     if (index != incomingNames.lastIndex) {
                         add(", ")
                     }
@@ -278,7 +278,7 @@ internal class SubActionActionStatement(
 
         val targetPropertyRef = targetProperty.propertyRef
         builder.add(targetPropertyRef)
-        builder.add(" = ")
+        builder.add("·=·")
         builder.add(invokeCode)
     }
 }

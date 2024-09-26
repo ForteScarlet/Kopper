@@ -29,12 +29,12 @@ import java.util.*
 
 
 internal class MapperDefResolveContext(
-    val sourceDeclaration: KSClassDeclaration,
+    private val sourceDeclaration: KSClassDeclaration,
     val environment: SymbolProcessorEnvironment,
     val resolver: Resolver,
-    val mapperAnnotation: KSAnnotation,
+    mapperAnnotation: KSAnnotation,
 ) {
-    val mapperAnnoDeclaration = resolver.getClassDeclarationByName<love.forte.kopper.annotation.Mapper>()
+    private val mapperAnnoDeclaration = resolver.getClassDeclarationByName<love.forte.kopper.annotation.Mapper>()
         ?: error("Cannot find `Mapper` annotation declaration.")
 
     val mapperAnnoType = mapperAnnoDeclaration.asStarProjectedType()
@@ -89,6 +89,7 @@ internal fun KSClassDeclaration.resolveToMapperDef(
         simpleName = mapperContext.mapperName,
         packageName = mapperContext.mapperPackage,
         declarationActions = mapperContext.actions.toList(),
+        mapperAnnotation = mapperAnnotation,
         genTarget = mapperContext.mapperArgs.genTarget,
         genVisibility = mapperContext.mapperArgs.visibility,
         open = mapperContext.mapperArgs.open,

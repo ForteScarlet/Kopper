@@ -20,7 +20,7 @@ import love.forte.kopper.annotation.Map
 import love.forte.kopper.annotation.Mapper
 
 @Mapper
-interface DeepTestMapper {
+interface NestedSourceTestMapper {
     data class TargetClass(var name: String)
     data class Source(val value0: SourceSub1)
     data class SourceSub1(val value1: SourceSub2)

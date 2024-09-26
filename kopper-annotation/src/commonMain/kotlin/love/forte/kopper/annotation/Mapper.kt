@@ -23,7 +23,7 @@ import kotlin.reflect.KClass
  */
 public annotation class Mapper(
     // target
-    val genTarget: MapperGenTarget = MapperGenTarget.CLASS,
+    val genTarget: MapperGenTarget = MapperGenTarget.OBJECT,
     val visibility: MapperGenVisibility = MapperGenVisibility.INTERNAL,
     val open: Boolean = false,
     // name

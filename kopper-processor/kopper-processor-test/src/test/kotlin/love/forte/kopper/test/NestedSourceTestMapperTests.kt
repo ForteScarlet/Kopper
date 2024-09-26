@@ -1,7 +1,6 @@
 package love.forte.kopper.test
 
-import DeepTestMapperImpl
-import love.forte.kopper.test.DeepTestMapper.TargetClass
+import love.forte.kopper.test.NestedSourceTestMapper.TargetClass
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -10,16 +9,16 @@ import kotlin.test.assertEquals
  *
  * @author ForteScarlet
  */
-class DeepTestMapperTests {
+class NestedSourceTestMapperTests {
 
     @Test
     fun deepTestMapperTest() {
-        val mapper = DeepTestMapperImpl()
+        val mapper = NestedSourceTestMapperImpl
 
-        fun source(name: String = "value") = DeepTestMapper.Source(
-            DeepTestMapper.SourceSub1(
-                DeepTestMapper.SourceSub2(
-                    DeepTestMapper.SourceSub3(
+        fun source(name: String = "value") = NestedSourceTestMapper.Source(
+            NestedSourceTestMapper.SourceSub1(
+                NestedSourceTestMapper.SourceSub2(
+                    NestedSourceTestMapper.SourceSub3(
                         name
                     )
                 )

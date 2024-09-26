@@ -12,7 +12,7 @@ class CastMapperTests {
 
     @Test
     fun castMapperTest() {
-        val mapper = CastMapperImpl()
+        val mapper = CastMapperImpl
         fun source() = CastMapper.Source(1)
 
         with(mapper) {
@@ -38,7 +38,7 @@ class CastMapperTests {
 
     @Test
     fun nullableCastMapperTest() {
-        val mapper = NullableCastMapperImpl()
+        val mapper = NullableCastMapperImpl
         fun source() = NullableCastMapper.Source(1)
 
         with(mapper) {

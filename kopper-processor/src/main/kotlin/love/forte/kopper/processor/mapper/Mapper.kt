@@ -18,10 +18,12 @@ package love.forte.kopper.processor.mapper
 
 import com.google.devtools.ksp.symbol.ClassKind
 import com.squareup.kotlinpoet.AnnotationSpec
+import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.KModifier.*
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.toClassName
+import love.forte.kopper.annotation.GeneratedMapper
 import love.forte.kopper.annotation.MapperGenTarget
 import love.forte.kopper.annotation.MapperGenVisibility
 import love.forte.kopper.processor.def.MapperDef
@@ -79,6 +81,23 @@ internal class Mapper(
                 )
                 .build()
         )
+
+        // add GeneratedMapper
+
+        if (def.mapperAnnotation != null) {
+            typeBuilder.addAnnotation(
+                AnnotationSpec.builder(GeneratedMapper::class)
+                    .addMember(
+                        CodeBlock.builder()
+                            .apply {
+                                val sourceDeclaration = def.sourceDeclaration
+                                add("sources = [%T::class]", sourceDeclaration.toClassName())
+                            }
+                            .build()
+                    )
+                    .build()
+            )
+        }
     }
 
     fun generate() {
@@ -87,7 +106,6 @@ internal class Mapper(
             resolver = def.resolver,
             generator
         )
-
         // 遍历两遍，先 prepare，再 generate
         def.declarationActions.forEach { def ->
             val action = MapperAction(def = def, generator = actionGenerator)

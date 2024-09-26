@@ -18,6 +18,7 @@ package love.forte.kopper.processor.def
 
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
+import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import love.forte.kopper.annotation.MapperGenTarget
 import love.forte.kopper.annotation.MapperGenVisibility
@@ -46,13 +47,10 @@ internal data class MapperDef(
      */
     val declarationActions: List<MapperActionDef>,
 
+    val mapperAnnotation: KSAnnotation?,
+
     val genTarget: MapperGenTarget,
     val genVisibility: MapperGenVisibility,
     val open: Boolean,
-) {
-    /**
-     * The unique qualified name of this mapper.
-     */
-    val qualifiedName: String = "$simpleName.$packageName"
-}
+)
 

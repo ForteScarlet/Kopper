@@ -47,3 +47,17 @@ interface NullableCastMapper {
     fun Source.map(@Map.Target target: Target): Target
     fun Source.map1(@Map.Target target: Target)
 }
+
+/**
+ *
+ * @author ForteScarlet
+ */
+@Mapper
+abstract class AbstractCastMapper {
+    data class Source(val number: Int?)
+    data class Target(var number: Long)
+
+    abstract fun Source.map(): Target
+    abstract fun Source.map(@Map.Target target: Target): Target
+    abstract fun Source.map1(@Map.Target target: Target)
+}
