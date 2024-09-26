@@ -20,28 +20,26 @@ import kotlin.annotation.AnnotationTarget.FUNCTION
 import kotlin.annotation.AnnotationTarget.VALUE_PARAMETER
 
 /**
- * A property mapper marker
+ * A property mapper marker in a Mapper type.
  *
  * ```kotlin
  * interface MyMapper {
- *   @Map(source = "", target = "", ...)
+ *   @Mapping(source = "", target = "", ...)
  *   fun SourceModel.mapTo(): TargetModel
  *
  * }
  * ```
  *
  * @param source The source property in a source model.
- * (with type [sourceType])
  * @param target The target property in a target model.
  *
  */
 @Repeatable
 @Target(FUNCTION)
-public annotation class Map(
+public annotation class Mapping(
     val target: String,
     val source: String = SAME_AS_TARGET,
     val sourceName: String = MAIN_SOURCE,
-    val sourceType: PropertyType = PropertyType.AUTO,
     val ignore: Boolean = false,
     val eval: String = "",
     /**
@@ -62,9 +60,9 @@ public annotation class Map(
 
     public companion object {
         /**
-         * Same as [Map.target] if [Map.source]'s value is an empty string.
+         * Same as [Mapping.target] if [Mapping.source]'s value is an empty string.
          *
-         * @see Map
+         * @see Mapping
          */
         public const val SAME_AS_TARGET: String = ""
 

@@ -71,14 +71,17 @@ internal class KopperProcessor(
             mapperDefs
         )
 
-        environment.logger.info("finish. generator: $generator")
-
         generator.generate()
         // find all originating files
 
         val files = generator.files.map { (file, def) -> file.build() to def }
 
         files.forEach { (file, def) ->
+            environment.logger.info(
+                "Writing implementation file ${file.name} for mapper ${def.packageName}.${def.simpleName}",
+                def.sourceDeclaration
+            )
+            
             file.writeTo(
                 codeGenerator = environment.codeGenerator,
                 aggregating = true,

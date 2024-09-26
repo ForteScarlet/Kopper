@@ -93,21 +93,21 @@ internal data class MapperActionTargetDef(
      * Null if it has no primary constructor.
      */
     val requires: List<RequiredParameterDef>? by lazy(LazyThreadSafetyMode.PUBLICATION) {
-        val constructor = declaration.primaryConstructor ?: return@lazy null
+            val constructor = declaration.primaryConstructor ?: return@lazy null
 
-        constructor.parameters.map { parameter ->
-            val type = parameter.type.resolve()
-            RequiredParameterDef(
-                environment = environment,
-                resolver = resolver,
-                name = parameter.name!!.asString(),
-                declaration = type.declaration,
-                nullable = type.nullability.isNullable,
-                node = parameter,
-                isVar = parameter.isVar,
-                hasDefaultValue = parameter.hasDefault,
-            )
+            constructor.parameters.map { parameter ->
+                val type = parameter.type.resolve()
+                RequiredParameterDef(
+                    environment = environment,
+                    resolver = resolver,
+                    name = parameter.name!!.asString(),
+                    declaration = type.declaration,
+                    nullable = type.nullability.isNullable,
+                    node = parameter,
+                    isVar = parameter.isVar,
+                    hasDefaultValue = parameter.hasDefault,
+                )
+            }
         }
-    }
 }
 

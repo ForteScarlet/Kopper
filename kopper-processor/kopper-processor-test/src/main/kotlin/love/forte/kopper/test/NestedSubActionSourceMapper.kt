@@ -16,9 +16,9 @@
 
 package love.forte.kopper.test
 
-import love.forte.kopper.annotation.Map
 import love.forte.kopper.annotation.Mapper
 import love.forte.kopper.annotation.MapperGenTarget
+import love.forte.kopper.annotation.Mapping
 
 /**
  *
@@ -41,10 +41,10 @@ interface NestedSubActionSourceMapper {
 
     data class SubTarget(val name: String, val age: String)
 
-    @Map(target = "sub.name", source = "value.name")
+    @Mapping(target = "sub.name", source = "value.name")
     // ⬆️ Default source name is the MainSource,
     // and it will be the receiver or first source in parameter if without @Map.MainSource.
-    @Map(target = "sub.age", source = "value.age", sourceName = "source2")
-    @Map(target = "size", source = "value.size", sourceName = "source3")
+    @Mapping(target = "sub.age", source = "value.age", sourceName = "source2")
+    @Mapping(target = "size", source = "value.size", sourceName = "source3")
     fun toTarget(source1: Source1, source2: Source2, source3: Source3): Target
 }

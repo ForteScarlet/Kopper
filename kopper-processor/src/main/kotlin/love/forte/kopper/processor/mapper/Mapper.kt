@@ -113,6 +113,7 @@ internal class Mapper(
         }
 
         for (action in actionGenerator.actions) {
+            def.environment.logger.info("Preparing action statement ${action.def.name}", action.def.node)
             action.prepare()
         }
 
@@ -123,6 +124,7 @@ internal class Mapper(
             for (buffer in buffers) {
                 // prepare buffer and add to actions (releases)
                 // prepare may add more buffers.
+                def.environment.logger.info("Preparing action statement ${buffer.def.name}", buffer.def.node)
                 buffer.prepare()
                 actionGenerator.actions.add(buffer)
             }
@@ -130,6 +132,7 @@ internal class Mapper(
         } while (actionGenerator.buffer.isNotEmpty())
 
         for (action in actionGenerator.actions) {
+            def.environment.logger.info("Generating action statement ${action.def.name}", action.def.node)
             action.generate()
             typeBuilder.addFunction(action.funBuilder.build())
         }

@@ -47,6 +47,10 @@ internal data class ModifiablePropertyDef(
 ) : TargetPropertyDef {
     override val isRequired: Boolean
         get() = false
+
+    override fun toString(): String {
+        return "ModifiablePropertyDef(declaration=$declaration, isRequired=$isRequired, name='$name', node=$node, nullable=$nullable)"
+    }
 }
 
 /**
@@ -64,6 +68,12 @@ internal data class RequiredParameterDef(
 ) : TargetPropertyDef {
     override val isRequired: Boolean
         get() = true
+
+    override fun toString(): String {
+        return "RequiredParameterDef(declaration=$declaration, name='$name', nullable=$nullable, node=$node, isVar=$isVar, hasDefaultValue=$hasDefaultValue)"
+    }
+
+
 }
 
 /**

@@ -18,19 +18,16 @@ package love.forte.kopper.processor.def
 
 import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSNode
-import love.forte.kopper.annotation.Map
-import love.forte.kopper.annotation.PropertyType
+import love.forte.kopper.annotation.Mapping
 import love.forte.kopper.processor.util.findArg
-import love.forte.kopper.processor.util.findEnumArg
 
 /**
- * Map args from annotation [Map].
+ * Map args from annotation [Mapping].
  */
-internal data class MapArgs(
+internal data class MappingArgs(
     val target: NodeArg<String>,
     val source: NodeArg<String>,
     val sourceName: NodeArg<String>,
-    val sourceType: NodeArg<PropertyType>,
     val ignore: NodeArg<Boolean>,
     val eval: NodeArg<String>,
     /**
@@ -44,22 +41,20 @@ internal data class MapArgs(
 }
 
 /**
- * @see love.forte.kopper.annotation.Map
+ * @see love.forte.kopper.annotation.Mapping
  */
-internal fun KSAnnotation.resolveToMapArgs(): MapArgs {
+internal fun KSAnnotation.resolveToMapArgs(): MappingArgs {
     val target: NodeArg<String> = findArg("target")!!
     val source: NodeArg<String> = findArg("source")!!
     val sourceName: NodeArg<String> = findArg("sourceName")!!
-    val sourceType: NodeArg<PropertyType> = findEnumArg<PropertyType>("sourceType")!!
     val ignore: NodeArg<Boolean> = findArg("ignore")!!
     val eval: NodeArg<String> = findArg("eval")!!
     val evalNullable: NodeArg<Boolean> = findArg("evalNullable")!!
 
-    return MapArgs(
+    return MappingArgs(
         target = target,
-        source = if (Map.SAME_AS_TARGET == source.value) target else source,
+        source = if (Mapping.SAME_AS_TARGET == source.value) target else source,
         sourceName = sourceName,
-        sourceType = sourceType,
         ignore = ignore,
         eval = eval,
         evalNullable = evalNullable,

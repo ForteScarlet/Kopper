@@ -18,7 +18,21 @@ package love.forte.kopper.annotation
 
 import kotlin.reflect.KClass
 
-
+/**
+ * A Marker for generated mapper implementation types.
+ *
+ * ```kotlin
+ * // source
+ * @Mapper
+ * interface MyMapper { ... }
+ *
+ * // generated
+ * @GeneratedMapper(sources = [MyMapper::class])
+ * internal object MyMapperImpl : MyMapper { ... }
+ * ```
+ *
+ * @see Mapper
+ */
 @Target(AnnotationTarget.CLASS)
 public annotation class GeneratedMapper(
     vararg val sources: KClass<*>

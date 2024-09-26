@@ -34,7 +34,7 @@ internal data class MapperActionDef(
      * The name of this action in a mapper.
      */
     val name: String,
-    val mapArgs: List<MapArgs>,
+    val mappingArgs: List<MappingArgs>,
     val sources: List<MapperActionSourceDef>,
     val target: MapperActionTargetDef,
     /**

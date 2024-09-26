@@ -19,22 +19,26 @@ package love.forte.kopper.test
 import love.forte.kopper.annotation.Mapper
 import love.forte.kopper.annotation.Mapping
 
+/**
+ *
+ * @author ForteScarlet
+ */
 @Mapper
-interface NestedSourceTestMapper {
-    data class TargetClass(var name: String)
-    data class Source(val value0: SourceSub1)
-    data class SourceSub1(val value1: SourceSub2)
-    class SourceSub2(private val sub: SourceSub3) {
-        fun value2(): SourceSub3 = sub
+interface EnumCastMapper {
+    enum class SourceE {
+        V1, V2, V3
     }
-    data class SourceSub3(val name: String)
 
-    @Mapping(target = "name", source = "value0.value1.value2.name")
-    fun Source.map1(): TargetClass
+    enum class TargetE {
+        V1, V2, V3
+    }
 
-    @Mapping(target = "name", source = "value0.value1.value2.name")
-    fun Source.map2(@Mapping.Target target: TargetClass): TargetClass
+    data class Source(val value: String, val type: SourceE)
+    data class Target(val value: String, val type: TargetE)
 
-    @Mapping(target = "name", source = "value0.value1.value2.name")
-    fun Source.map3(@Mapping.Target target: TargetClass)
+    // fun toTarget(source: Source): Target
+    // fun Source.toTarget1(): Target
+
+    fun toTarget0(source: Source, @Mapping.Target target: Target): Target
+    // fun Source.toTarget01(@Mapping.Target target: Target): Target
 }

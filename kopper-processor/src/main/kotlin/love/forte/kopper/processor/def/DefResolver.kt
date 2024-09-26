@@ -21,7 +21,7 @@ import com.google.devtools.ksp.isAbstract
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.*
-import love.forte.kopper.annotation.Map
+import love.forte.kopper.annotation.Mapping
 import love.forte.kopper.processor.util.asClassDeclaration
 import love.forte.kopper.processor.util.hasAnno
 import love.forte.kopper.processor.util.isNullable
@@ -39,28 +39,30 @@ internal class MapperDefResolveContext(
     //
     // val mapperAnnoType = mapperAnnoDeclaration.asStarProjectedType()
 
-    private val mapAnnoDeclaration = resolver.getClassDeclarationByName<Map>()
+    private val mappingAnnoDeclaration = resolver.getClassDeclarationByName<Mapping>()
         ?: error("Cannot find `Map` annotation declaration.")
 
-    val mapAnnoType = mapAnnoDeclaration.asStarProjectedType()
+    val mapAnnoType = mappingAnnoDeclaration.asStarProjectedType()
 
-    private val mapTargetAnnoDeclaration = resolver.getClassDeclarationByName<Map.Target>()
+    private val mappingTargetAnnoDeclaration = resolver.getClassDeclarationByName<Mapping.Target>()
         ?: error("Cannot find `Map.Target` declaration.")
 
-    val mapTargetAnnoType = mapTargetAnnoDeclaration.asStarProjectedType()
+    val mapTargetAnnoType = mappingTargetAnnoDeclaration.asStarProjectedType()
 
-    private val mapMainSourceAnnoDeclaration = resolver.getClassDeclarationByName<Map.MainSource>()
+    private val mappingMainSourceAnnoDeclaration = resolver.getClassDeclarationByName<Mapping.MainSource>()
         ?: error("Cannot find `Map.MainSource` declaration.")
 
-    val mapMainSourceAnnoType = mapMainSourceAnnoDeclaration.asStarProjectedType()
+    val mapMainSourceAnnoType = mappingMainSourceAnnoDeclaration.asStarProjectedType()
 
     val mapperArgs = mapperAnnotation.resolveMapperArgs()
     val mapperName = mapperArgs.targetName { sourceDeclaration.simpleName.asString() }
-    val mapperPackage = mapperArgs.packageName.ifBlank { sourceDeclaration.packageName.asString() }
+    val mapperPackage = if (mapperArgs.packageSameAsSource) {
+        sourceDeclaration.packageName.asString()
+    } else {
+        mapperArgs.packageName
+    }
 
     val actions: MutableList<MapperActionDef> = mutableListOf()
-
-
 }
 
 /**
@@ -111,7 +113,7 @@ internal fun MapperDefResolveContext.resolveMapActionDefs(
     val name = function.simpleName.asString()
 
     // map args
-    val mapArgs: List<MapArgs> = function.annotations
+    val mappingArgs: List<MappingArgs> = function.annotations
         .filter {
             mapAnnoType.isAssignableFrom(it.annotationType.resolve())
         }
@@ -125,7 +127,7 @@ internal fun MapperDefResolveContext.resolveMapActionDefs(
 
     resolveMapActionDefs(
         name = name,
-        mapArgs = mapArgs,
+        mappingArgs = mappingArgs,
         sources = sources,
         target = target,
         source = function
@@ -325,7 +327,7 @@ internal fun MapperDefResolveContext.resolveActionTarget(
 
 internal fun MapperDefResolveContext.resolveMapActionDefs(
     name: String,
-    mapArgs: List<MapArgs>,
+    mappingArgs: List<MappingArgs>,
     sources: List<MapperActionSourceDef>,
     target: MapperActionTargetDef,
     source: KSFunctionDeclaration,
@@ -334,7 +336,7 @@ internal fun MapperDefResolveContext.resolveMapActionDefs(
         environment = environment,
         resolver = resolver,
         name = name,
-        mapArgs = mapArgs,
+        mappingArgs = mappingArgs,
         sources = sources,
         target = target,
         sourceFun = source,

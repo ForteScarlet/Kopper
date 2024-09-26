@@ -16,8 +16,8 @@
 
 package love.forte.kopper.test
 
-import love.forte.kopper.annotation.Map
 import love.forte.kopper.annotation.Mapper
+import love.forte.kopper.annotation.Mapping
 
 
 /**
@@ -30,8 +30,8 @@ interface CastMapper {
     data class Target(var number: Long)
 
     fun Source.map(): Target
-    fun Source.map(@Map.Target target: Target): Target
-    fun Source.map1(@Map.Target target: Target)
+    fun Source.map(@Mapping.Target target: Target): Target
+    fun Source.map1(@Mapping.Target target: Target)
 }
 
 /**
@@ -44,8 +44,8 @@ interface NullableCastMapper {
     data class Target(var number: Long)
 
     fun Source.map(): Target
-    fun Source.map(@Map.Target target: Target): Target
-    fun Source.map1(@Map.Target target: Target)
+    fun Source.map(@Mapping.Target target: Target): Target
+    fun Source.map1(@Mapping.Target target: Target)
 }
 
 /**
@@ -58,6 +58,6 @@ abstract class AbstractCastMapper {
     data class Target(var number: Long)
 
     abstract fun Source.map(): Target
-    abstract fun Source.map(@Map.Target target: Target): Target
-    abstract fun Source.map1(@Map.Target target: Target)
+    abstract fun Source.map(@Mapping.Target target: Target): Target
+    abstract fun Source.map1(@Mapping.Target target: Target)
 }

@@ -18,68 +18,8 @@ package love.forte.kopper.processor.util
 
 import com.google.devtools.ksp.processing.KSBuiltIns
 import com.google.devtools.ksp.symbol.*
-import love.forte.kopper.annotation.PropertyType
 import love.forte.kopper.processor.def.NodeArg
 
-internal const val EVAL: String = "eval"
-
-/**
- * Is `eval(...)` expression.
- */
-internal val String.isEvalExpression: Boolean
-    get() = startsWith("$EVAL(") && endsWith(")")
-
-internal fun String.evalExpressionValue(): String {
-    check(isEvalExpression) {
-        "$this is not an eval expression."
-    }
-
-    return substring(EVAL.length + 1, length - 1)
-}
-
-
-internal inline fun <T> findProperty(
-    name: String,
-    declaration: KSDeclaration,
-    propertyType: PropertyType,
-    onProperty: (KSPropertyDeclaration) -> T?,
-    onFunction: (KSFunctionDeclaration) -> T?,
-): T? {
-    return when (propertyType) {
-        PropertyType.PROPERTY -> findPropProperty(name, declaration, onProperty)
-        PropertyType.FUNCTION -> findFunProperty(name, declaration, onFunction)
-        PropertyType.AUTO -> findPropProperty(name, declaration, onProperty)
-            ?: findFunProperty(name, declaration, onFunction)
-    }
-}
-
-
-internal inline fun <T> findPropProperty(
-    name: String,
-    declaration: KSDeclaration,
-    block: (KSPropertyDeclaration) -> T?
-): T? {
-    return declaration.asClassDeclaration()
-        ?.getAllProperties()
-        // 返回值是 type
-        ?.firstOrNull { it.simpleName.asString() == name }
-        ?.let(block)
-}
-
-internal inline fun <T> findFunProperty(
-    name: String,
-    declaration: KSDeclaration,
-    block: (KSFunctionDeclaration) -> T?
-): T? {
-    return declaration.asClassDeclaration()
-        ?.getAllFunctions()
-        // 没有参数，有返回值
-        ?.filter { it.simpleName.asString() == name }
-        ?.filter { it.parameters.isEmpty() }
-        ?.filter { it.returnType != null }
-        ?.firstOrNull()
-        ?.let(block)
-}
 
 internal inline fun <reified T> KSAnnotation.findArg(name: String): NodeArg<T>? {
     val argument = (
@@ -91,27 +31,9 @@ internal inline fun <reified T> KSAnnotation.findArg(name: String): NodeArg<T>? 
         ?: return null
 
     return NodeArg(value, argument)
-
-    // return (
-    //     arguments.find { it.name?.asString() == name }?.value
-    //         ?: defaultArguments.find { it.name?.asString() == name }?.value
-    //     )
-    //     as? T
 }
 
-// internal inline fun <reified T> KSAnnotation.findArg(name: String): T? {
-//     return (
-//         arguments.find { it.name?.asString() == name }?.value
-//             ?: defaultArguments.find { it.name?.asString() == name }?.value
-//         )
-//         as? T
-// }
-
-internal inline fun <reified T> KSAnnotation.findListArg(name: String): NodeArg<List<T>>? {
-    return findArg<List<T>>(name)
-}
-
-// internal inline fun <reified T> KSAnnotation.findListArg(name: String): List<T>? {
+// internal inline fun <reified T> KSAnnotation.findListArg(name: String): NodeArg<List<T>>? {
 //     return findArg<List<T>>(name)
 // }
 
@@ -130,20 +52,6 @@ internal inline fun <reified T : Enum<T>> KSAnnotation.findEnumArg(name: String)
 
     return NodeArg(enumValueOf<T>(enumValue), argument)
 }
-
-// internal inline fun <reified T : Enum<T>> KSAnnotation.findEnumArg(name: String): T? {
-//     val value = (
-//         arguments.find { it.name?.asString() == name }?.value
-//             ?: defaultArguments.find { it.name?.asString() == name }?.value
-//         ) ?: return null
-//
-//     if (value is T) return value
-//     // https://github.com/google/ksp/issues/429
-//     val enumValue = ((value as? KSType)?.declaration as? KSClassDeclaration)?.simpleName?.asString()
-//         ?: return null
-//
-//     return enumValueOf<T>(enumValue)
-// }
 
 internal fun KSAnnotated.hasAnno(targetAnoType: KSType): Boolean =
     annotations.any { ano ->
@@ -187,7 +95,12 @@ private fun KSDeclaration.isULong(): Boolean =
     packageName.asString() == KT_NUMBER_PACKAGE && simpleName.asString() == U_LONG_NAME
 
 internal fun KSDeclaration.isMappableStructType(builtIns: KSBuiltIns): Boolean {
+    val thisClass = this.asClassDeclaration()
     return when {
+        this == builtIns.annotationType.declaration -> false
+        this == builtIns.unitType.declaration -> false
+        this == builtIns.anyType.declaration -> false
+        this == builtIns.arrayType.declaration -> false
         this == builtIns.numberType.declaration -> false
         this == builtIns.byteType.declaration -> false
         this == builtIns.shortType.declaration -> false
@@ -200,9 +113,21 @@ internal fun KSDeclaration.isMappableStructType(builtIns: KSBuiltIns): Boolean {
         this == builtIns.stringType.declaration -> false
         // is number, for UXxx
         isUByte() || isUShort() || isUInt() || isULong() -> false
-
         // 更多检测?
-        this is KSClassDeclaration -> true
+        this is KSClassDeclaration -> when {
+            // is data class -> true
+            this.modifiers.contains(Modifier.DATA) -> true
+            // no class, no interface -> false
+            this.classKind != ClassKind.CLASS
+                && this.classKind != ClassKind.INTERFACE // cannot be initialized, but can be mapped.
+                -> false
+
+            // is iterable, not struct.
+            builtIns.iterableType.isAssignableFrom(this.asStarProjectedType()) -> false
+
+            else -> false
+        }
+
         this is KSTypeAlias -> asClassDeclaration()?.isMappableStructType(builtIns) ?: false
         else -> false
     }

@@ -9,16 +9,14 @@ and [kotlinpoet](https://github.com/square/kotlinpoet) .
 
 ### Goal
 
-- Maps one or more properties from (a) `Source`(s) to a property corresponding to a `Target` data type.
+Maps one or more properties from (a) `Source`(s) to a property corresponding to a `Target` data type.
 
 ### Non-Goal
 
 - Complex properties transformation calculations.
 - Cross-correlation between different mappings.
 - Data class builder generation.
-- Non-trusted `null` safety.
-  _The use of `!!` occurs during transformation if nullability does not match._
-- A non-property mapping to the `Target`.
+- A non-property mapping for `Target`.
 
 ## Support
 
@@ -160,27 +158,27 @@ An implementation will be generated for it:
 
 ```kotlin
 internal class NestedMapperImpl : NestedMapper {
-  override fun toTarget(
-    source1: Source1,
-    source2: Source2,
-    source3: Source3,
-  ): Target {
-    val _t_0 = Target(
-        sub = toSubTarget_0(
-            source1 = source1,
-            source2 = source2
+    override fun toTarget(
+        source1: Source1,
+        source2: Source2,
+        source3: Source3,
+    ): Target {
+        val _t_0 = Target(
+            sub = toSubTarget_0(
+                source1 = source1,
+                source2 = source2
+            )
         )
-    )
-    _t_0.size = source3.value.size.toUInt()
-    return _t_0
-  }
+        _t_0.size = source3.value.size.toUInt()
+        return _t_0
+    }
 
-  private fun toSubTarget_0(source1: Source1, source2: Source2): SubTarget {
-    val _t_0 = SubTarget(
-        name = source1.value.name,
-        age = source2.value.age
-    )
-    return _t_0
-  }
+    private fun toSubTarget_0(source1: Source1, source2: Source2): SubTarget {
+        val _t_0 = SubTarget(
+            name = source1.value.name,
+            age = source2.value.age
+        )
+        return _t_0
+    }
 }
 ```

@@ -42,7 +42,11 @@ internal class MapperGenerator(
 
     fun generate() {
         for (def in defs) {
+            environment.logger.info("Generating mapper ${def.packageName}.${def.simpleName}", def.sourceDeclaration)
+
             Mapper(def = def, generator = this).generate()
+
+            environment.logger.info("Mapper ${def.packageName}.${def.simpleName} generated.", def.sourceDeclaration)
         }
     }
 }
@@ -71,11 +75,11 @@ internal class MapperActionsGenerator(
         sources: Collection<MapperActionSourceDef>,
         target: MapperActionTargetDef,
         name: String,
-        mapArgs: List<MapArgs>,
+        mappingArgs: List<MappingArgs>,
         node: KSNode?,
         sourcePrefix: String?,
     ): MapperAction {
-        val expectArgs = mapArgs.sortedBy { it.target.value }
+        val expectArgs = mappingArgs.sortedBy { it.target.value }
 
         val allSequence = actions.asSequence() + buffer.asSequence()
 
@@ -85,7 +89,7 @@ internal class MapperActionsGenerator(
             }
 
             // mapArgs 相同
-            val actionArgs = action.def.mapArgs.sortedBy { it.target.value }
+            val actionArgs = action.def.mappingArgs.sortedBy { it.target.value }
 
             if (actionArgs.size != expectArgs.size) {
                 return@find false
@@ -157,7 +161,7 @@ internal class MapperActionsGenerator(
             from sources: $sources
             for target:   $target
             or name:      $name ($additionalIndex)
-            with args:    $mapArgs
+            with args:    $mappingArgs
         """.trimIndent()
         )
 
@@ -168,7 +172,7 @@ internal class MapperActionsGenerator(
             resolver = resolver,
             target = target,
             name = name + "_" + (additionalIndex++),
-            mapArgs = mapArgs,
+            mappingArgs = mappingArgs,
             sourceFun = null,
             sources = sources.toList(),
             node = node

@@ -18,11 +18,11 @@ package love.forte.kopper.processor.def
 
 import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSNode
+import love.forte.kopper.annotation.Mapper
 import love.forte.kopper.annotation.MapperGenTarget
 import love.forte.kopper.annotation.MapperGenVisibility
 import love.forte.kopper.processor.util.findArg
 import love.forte.kopper.processor.util.findEnumArg
-import love.forte.kopper.processor.util.findListArg
 
 /**
  * @see love.forte.kopper.annotation.Mapper
@@ -36,10 +36,13 @@ internal data class MapperArgs(
     val genTargetName: NodeArg<String>,
     val genTargetNamePrefix: NodeArg<String>,
     val genTargetNameSuffix: NodeArg<String>,
-    val genTargetPackages: NodeArg<List<String>>,
+    val genTargetPackage: NodeArg<String>,
     val node: KSNode?,
 ) {
-    val packageName: String = genTargetPackages.value.joinToString(".")
+    val packageName: String by genTargetPackage
+    val packageSameAsSource: Boolean
+        get() = packageName == Mapper.PACKAGE_SAME_AS_SOURCE
+
     inline fun targetName(declarationSimpleName: () -> String): String =
         genTargetNamePrefix.value +
             (genTargetName.value.takeIf { it.isNotEmpty() } ?: declarationSimpleName()) +
@@ -55,7 +58,7 @@ internal fun KSAnnotation.resolveMapperArgs(): MapperArgs {
     val genTargetName: NodeArg<String> = findArg("genTargetName")!!
     val genTargetNamePrefix: NodeArg<String> = findArg("genTargetNamePrefix")!!
     val genTargetNameSuffix: NodeArg<String> = findArg("genTargetNameSuffix")!!
-    val genTargetPackages: NodeArg<List<String>> = findListArg<String>("genTargetPackages")!!
+    val genTargetPackage: NodeArg<String> = findArg<String>("genTargetPackage")!!
     val open: NodeArg<Boolean> = findArg("open")!!
 
     return MapperArgs(
@@ -64,7 +67,7 @@ internal fun KSAnnotation.resolveMapperArgs(): MapperArgs {
         genTargetName = genTargetName,
         genTargetNamePrefix = genTargetNamePrefix,
         genTargetNameSuffix = genTargetNameSuffix,
-        genTargetPackages = genTargetPackages,
+        genTargetPackage = genTargetPackage,
         open = open,
         node = this,
     )

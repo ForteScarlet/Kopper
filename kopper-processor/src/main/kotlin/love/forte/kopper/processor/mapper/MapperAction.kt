@@ -104,10 +104,10 @@ internal class MapperAction internal constructor(
         }
     }
 
-    private data class ArgsAndProp(val args: MapArgs?, val prop: MapActionTargetProperty?)
+    private data class ArgsAndProp(val args: MappingArgs?, val prop: MapActionTargetProperty?)
 
     private fun prepareMaps() {
-        val mapArgsWithTargetPath = def.mapArgs.toMutableList().associateBy { it.target.value.toPath() }
+        val mapArgsWithTargetPath = def.mappingArgs.toMutableList().associateBy { it.target.value.toPath() }
 
         val rootTargets: MutableMap<Path, ArgsAndProp> =
             mapArgsWithTargetPath
@@ -124,10 +124,13 @@ internal class MapperAction internal constructor(
         // 追加普通的构造和属性
 
         target.def.requires?.forEach { r ->
+            // def.environment.logger.logging("Resolve requires $r, asProp: ${r.asProperty()}", r.node)
             val p = r.name.toPath()
             val prop = if (target.def.incoming != null) {
                 // 有入参，不需要初始化，找到 var 的参数，视为普通可变属性
                 val propDef = r.asProperty() ?: return@forEach
+
+                // def.environment.logger.logging("Modifiable prop from required arg: $propDef", propDef.node)
 
                 MapActionTargetPropertyImpl(
                     target = target,
@@ -152,6 +155,7 @@ internal class MapperAction internal constructor(
         // other properties.
         target.def.declaration
             .getAllProperties()
+            .filter { it.isMutable }
             .filter { it.simpleName.asString().toPath() !in rootTargets }
             .forEach { prop ->
                 val name = prop.simpleName.asString()
@@ -200,9 +204,9 @@ internal class MapperAction internal constructor(
 
     private fun resolvePath(
         path: Path,
-        mapArgs: MapArgs?,
+        mappingArgs: MappingArgs?,
         prop: MapActionTargetProperty?,
-        deepTargets: MutableMap<Path, MapArgs>,
+        deepTargets: MutableMap<Path, MappingArgs>,
         requiredStatements: MutableList<MapperActionStatement>,
         normalStatements: MutableList<MapperActionStatement>,
     ) {
@@ -229,10 +233,10 @@ internal class MapperAction internal constructor(
                 }
             ?: error("Unknown target $path in $target")
 
-        if (mapArgs?.isEvalValid == true) {
+        if (mappingArgs?.isEvalValid == true) {
             val eval = EvalMapperActionStatement(
-                eval = mapArgs.eval.value,
-                evalNullable = mapArgs.evalNullable.value,
+                eval = mappingArgs.eval.value,
+                evalNullable = mappingArgs.evalNullable.value,
                 property = targetProperty
             )
 
@@ -249,7 +253,7 @@ internal class MapperAction internal constructor(
         if (isMappableType) {
             // 可以产生子映射的结构体类型
             // find all sub args
-            val subArgs = mutableListOf<MapArgs>()
+            val subArgs = mutableListOf<MappingArgs>()
             val iter = deepTargets.entries.iterator()
             while (iter.hasNext()) {
                 val (key, value) = iter.next()
@@ -308,7 +312,7 @@ internal class MapperAction internal constructor(
                 sources = expectSources,
                 target = expectTarget,
                 name = "to${expectTarget.declaration.simpleName.asString()}",
-                mapArgs = subArgs,
+                mappingArgs = subArgs,
                 node = def.node,
                 sourcePrefix = defaultSourcePrefix?.let { "$it.$name" } ?: name,
             )
@@ -327,26 +331,26 @@ internal class MapperAction internal constructor(
             }
         } else {
             // 普通类型，尝试直接赋值 的 statement
-            val sourceDef = if (mapArgs?.sourceName?.value?.isNotBlank() == true) {
-                def.sources.find { it.incoming.name == mapArgs.sourceName.value }
+            val sourceDef = if (mappingArgs?.sourceName?.value?.isNotBlank() == true) {
+                def.sources.find { it.incoming.name == mappingArgs.sourceName.value }
             } else {
                 def.sources.find { it.isMain }
             } ?: run {
                 val msg =
-                    "Source in ${mapArgs?.sourceName?.value?.ifBlank { "<main>" } ?: "<main>"} for property ${targetProperty.def} not found. arg: $mapArgs"
+                    "Source in ${mappingArgs?.sourceName?.value?.ifBlank { "<main>" } ?: "<main>"} for property ${targetProperty.def} not found. arg: $mappingArgs"
                 def.environment.logger.error(msg, def.node)
                 error(msg)
             }
 
             val source = MapperActionSource(this, sourceDef)
 
-            val sourcePropertyPath = mapArgs?.source?.value?.takeUnless { it.isBlank() }?.toPath()
+            val sourcePropertyPath = mappingArgs?.source?.value?.takeUnless { it.isBlank() }?.toPath()
                 ?: defaultSourcePrefix?.let { it.toPath() + path } ?: path
 
             val sourceProperty = source.property(sourcePropertyPath)
                 ?: run {
                     val msg =
-                        "Source property ${defaultSourcePrefix}.${sourcePropertyPath.paths} in ${source.def} not found, arg: $mapArgs"
+                        "Source property ${defaultSourcePrefix}.${sourcePropertyPath.paths} in ${source.def} not found, arg: $mappingArgs"
                     def.environment.logger.error(msg, def.sourceFun ?: sourceDef.declaration)
                     error(msg)
                 }

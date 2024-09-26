@@ -21,7 +21,7 @@ package love.forte.kopper.annotation
  *
  * @property autoResolve Try to resolve all
  * properties with same names automatically.
- * Exclude properties used in special [Map].
+ * Exclude properties used in special [Mapping].
  */
 public annotation class MapSet(
     val autoResolve: Boolean = true,

@@ -21,6 +21,7 @@ import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.ksp.toClassName
 import love.forte.kopper.processor.def.readerCode
 import love.forte.kopper.processor.util.asClassDeclaration
+import love.forte.kopper.processor.util.tryTypeCast
 
 
 /**
@@ -57,6 +58,7 @@ internal class EvalMapperActionStatement(
         if (!property.def.nullable && evalNullable) {
             builder.add("!!")
         }
+
     }
 }
 
@@ -169,7 +171,6 @@ internal class RequiredInitialActionStatement(
         when {
             // 没有入参，直接初始化
             targetDef.incoming == null -> {
-                // TODO
                 builder.add("val %L·=·", name)
                 builder.add(initialCode)
             }
@@ -193,6 +194,12 @@ internal class RequiredInitialActionStatement(
 
             else -> {
                 // 有入参、不是 nullable，说白了就是不需要target初始化
+                builder.add(
+                    "/* " +
+                        "The input parameter of target already exists and cannot be null, " +
+                        "so it doesn't need to be initialised. " +
+                        "*/"
+                )
 
             }
         }

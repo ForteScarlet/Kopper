@@ -21,12 +21,6 @@ package love.forte.kopper.annotation
  */
 public enum class PropertyType {
     /**
-     * Attempt some degree of automatic judgment depending on the situation.
-     * If it cannot be judged and cannot be found, an exception is thrown.
-     */
-    AUTO,
-
-    /**
      * A property implemented as ... em, a property.
      */
     PROPERTY,

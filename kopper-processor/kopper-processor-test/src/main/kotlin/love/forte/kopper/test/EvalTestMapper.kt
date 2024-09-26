@@ -16,8 +16,8 @@
 
 package love.forte.kopper.test
 
-import love.forte.kopper.annotation.Map
 import love.forte.kopper.annotation.Mapper
+import love.forte.kopper.annotation.Mapping
 
 
 @Mapper
@@ -25,23 +25,23 @@ interface EvalTestMapper {
     data class Target(var name: String, var size: Long)
     data class Source(val name: String)
 
-    @Map(target = "size", eval = "5 + 6")
+    @Mapping(target = "size", eval = "5 + 6")
     fun Source.map1(): Target
 
-    @Map(target = "size", eval = "5 + 6")
-    fun Source.map2(@Map.Target target: Target): Target
+    @Mapping(target = "size", eval = "5 + 6")
+    fun Source.map2(@Mapping.Target target: Target): Target
 
-    @Map(target = "size", eval = "5 + 6")
-    fun Source.map3(@Map.Target target: Target)
+    @Mapping(target = "size", eval = "5 + 6")
+    fun Source.map3(@Mapping.Target target: Target)
 
 
-    @Map(target = "size", eval = "(5 + 6L)", evalNullable = true)
+    @Mapping(target = "size", eval = "(5 + 6L)", evalNullable = true)
     fun Source.map2_1(): Target
 
-    @Map(target = "size", eval = "(5 + 6L)", evalNullable = true)
-    fun Source.map2_2(@Map.Target target: Target): Target
+    @Mapping(target = "size", eval = "(5 + 6L)", evalNullable = true)
+    fun Source.map2_2(@Mapping.Target target: Target): Target
 
-    @Map(target = "size", eval = "(5 + 6L)", evalNullable = true)
-    fun Source.map2_3(@Map.Target target: Target)
+    @Mapping(target = "size", eval = "(5 + 6L)", evalNullable = true)
+    fun Source.map2_3(@Mapping.Target target: Target)
 }
 
