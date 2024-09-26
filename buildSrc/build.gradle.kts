@@ -15,6 +15,8 @@ dependencies {
     implementation(kotlin("serialization", kotlinVersion))
     implementation(libs.bundles.dokka)
 
-    // see https://github.com/gradle-nexus/publish-plugin
+    // https://github.com/gradle-nexus/publish-plugin
     implementation("io.github.gradle-nexus:publish-plugin:2.0.0")
+
+
 }

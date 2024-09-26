@@ -1,26 +1,30 @@
+plugins {
+    `kopper-dokka-multi-module`
+    `kopper-nexus-publish`
+}
 
 group = P.GROUP
-version = P.VERSION
+
+version = if (isSnapshot()) {
+    P.NEXT_SNAP_VERSION
+} else {
+    P.VERSION
+}
+
 repositories {
     mavenCentral()
 }
 
 allprojects {
     group = P.GROUP
-    version = P.VERSION
+
+    version = if (isSnapshot()) {
+        P.NEXT_SNAP_VERSION
+    } else {
+        P.VERSION
+    }
+
     repositories {
         mavenCentral()
     }
 }
-
-//
-// dependencies {
-//     testImplementation(kotlin("test"))
-// }
-//
-// tasks.test {
-//     useJUnitPlatform()
-// }
-// kotlin {
-//     jvmToolchain(8)
-// }

@@ -1,5 +1,4 @@
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.targets.js.dsl.ExperimentalWasmDsl
 
 /*
@@ -21,6 +20,8 @@ import org.jetbrains.kotlin.gradle.targets.js.dsl.ExperimentalWasmDsl
 plugins {
     kotlin("multiplatform")
     alias(libs.plugins.dokka)
+    `kopper-dokka-partial-configure`
+    `kopper-multiplatform-maven-publish`
 }
 
 @OptIn(ExperimentalKotlinGradlePluginApi::class)
@@ -28,12 +29,12 @@ kotlin {
     explicitApi()
     applyDefaultHierarchyTemplate()
 
-    jvmToolchain(8)
+    jvmToolchain(JVMConstants.KT_JVM_TARGET_VALUE)
     jvm {
         withJava()
         compilerOptions {
             javaParameters.set(true)
-            jvmTarget.set(JvmTarget.JVM_1_8)
+            jvmTarget.set(JVMConstants.KT_JVM_TARGET)
             freeCompilerArgs.addAll(
                 "-Xjvm-default=all",
                 "-Xjsr305=strict"

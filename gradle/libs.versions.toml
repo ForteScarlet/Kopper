@@ -30,4 +30,3 @@ dokka = { id = "org.jetbrains.dokka" }
 # binary-compatibility-validator
 # https://github.com/Kotlin/binary-compatibility-validator
 kotlinxBinaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version = "0.16.3" }
-

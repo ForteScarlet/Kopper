@@ -14,21 +14,20 @@
  * limitations under the License.
  */
 
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 
 plugins {
     kotlin("jvm")
-    alias(libs.plugins.dokka)
     alias(libs.plugins.ksp)
+    `kopper-dokka-partial-configure`
+    `kopper-jvm-maven-publish`
 }
 
 kotlin {
     explicitApi()
-    jvmToolchain(8)
+    jvmToolchain(JVMConstants.KT_JVM_TARGET_VALUE)
     compilerOptions {
         javaParameters.set(true)
-        jvmTarget.set(JvmTarget.JVM_1_8)
+        jvmTarget.set(JVMConstants.KT_JVM_TARGET)
         freeCompilerArgs.addAll(
             "-Xjvm-default=all",
             "-Xjsr305=strict"
