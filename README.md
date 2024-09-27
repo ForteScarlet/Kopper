@@ -10,11 +10,12 @@ and [kotlinpoet](https://github.com/square/kotlinpoet) .
 
 ## Overview
 
-### Goal
+**Goal**
 
-Maps one or more properties from (a) `Source`(s) to a property corresponding to a `Target` data type.
+Maps one or more properties from (a) `Source`(s) to a property corresponding to a `Target` data type,
+simple and lightweight.
 
-### Non-Goal
+**Non-Goal**
 
 - Complex properties transformation calculations.
 - Cross-correlation between different mappings.

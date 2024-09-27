@@ -4,7 +4,7 @@ plugins {
 }
 
 group = P.GROUP
-
+description = P.DESCRIPTION
 version = if (isSnapshot()) {
     P.NEXT_SNAP_VERSION
 } else {
@@ -17,6 +17,7 @@ repositories {
 
 allprojects {
     group = P.GROUP
+    description = P.DESCRIPTION
 
     version = if (isSnapshot()) {
         P.NEXT_SNAP_VERSION

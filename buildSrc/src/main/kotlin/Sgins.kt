@@ -35,10 +35,24 @@ data class Gpg(val keyId: String, val secretKey: String, val password: String) {
             secretKey: String = CiConstant.GPG_SECRET_KEY,
             password: String = CiConstant.GPG_PASSWORD,
         ): Gpg? {
-            val keyIdValue = systemProp(keyId) ?: return null
-            val secretKeyValue = systemProp(secretKey) ?: return null
-            val passwordValue = systemProp(password) ?: return null
+            val keyIdValue = systemProp(keyId)
+            val secretKeyValue = systemProp(secretKey)
+            val passwordValue = systemProp(password)
 
+            if (keyIdValue == null) {
+                logger.warn("GPG keyId {} is null", keyId)
+                return null
+            }
+
+            if (secretKeyValue == null) {
+                logger.warn("GPG secretKey {} is null", secretKey)
+                return null
+            }
+
+            if (passwordValue == null) {
+                logger.warn("GPG password {} is null", password)
+                return null
+            }
 
             return Gpg(keyIdValue, secretKeyValue, passwordValue)
         }
@@ -49,6 +63,7 @@ inline fun SigningExtension.configSigning(
     gpg: Gpg?,
     publications: () -> DomainObjectCollection<Publication>
 ) {
+    logger.info("Config signing, gpg is {} null, key id: {}", if (gpg == null) "" else "not", gpg?.keyId)
     val (keyId, secretKey, password) = gpg ?: return
     useInMemoryPgpKeys(keyId, secretKey, password)
     sign(publications()) //publishingExtension.publications)
