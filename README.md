@@ -70,8 +70,8 @@ data class Target(var number: Long)
 @Mapper
 interface MyMapper {
     fun Source.map(): Target
-    fun Source.map(@Map.Target target: Target): Target
-    fun Source.map1(@Map.Target target: Target)
+    fun Source.map(@Mapping.Target target: Target): Target
+    fun Source.map1(@Mapping.Target target: Target)
 }
 ```
 
