@@ -1,7 +1,8 @@
 # Kopper
 
 [![Maven Central](https://img.shields.io/maven-central/v/love.forte.kopper/kopper-processor)](https://repo1.maven.org/maven2/love/forte/kopper/kopper-processor/)
-[![GitHub latest release](https://img.shields.io/github/v/release/ForteScarlet/Kopper)](https://github.com/ForteScarlet/Kopper/releases/latest)
+
+[//]: # ([![GitHub latest release]&#40;https://img.shields.io/github/v/release/ForteScarlet/Kopper&#41;]&#40;https://github.com/ForteScarlet/Kopper/releases/latest&#41;)
 
 A simple processor for generating properties mappers against data models in Kotlin.
 
