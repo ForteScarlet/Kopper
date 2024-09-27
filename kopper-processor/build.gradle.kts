@@ -17,9 +17,9 @@
 
 plugins {
     kotlin("jvm")
+    alias(libs.plugins.ksp)
     `kopper-dokka-partial-configure`
     `kopper-jvm-maven-publish`
-    alias(libs.plugins.ksp)
 }
 
 kotlin {
@@ -51,7 +51,4 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
-}
-
-ksp {
 }

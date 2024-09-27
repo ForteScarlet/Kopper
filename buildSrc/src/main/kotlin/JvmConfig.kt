@@ -26,7 +26,6 @@ import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
-import org.jetbrains.kotlin.gradle.dsl.KotlinTopLevelExtension
 import org.jetbrains.kotlin.gradle.targets.jvm.KotlinJvmTarget
 
 
@@ -51,15 +50,11 @@ inline fun KotlinJvmTarget.configJava(crossinline block: KotlinJvmTarget.() -> U
 }
 
 
-fun KotlinTopLevelExtension.configJavaToolchain(jdkVersion: Int) {
-    jvmToolchain(jdkVersion)
-}
-
 inline fun KotlinMultiplatformExtension.configKotlinJvm(
     jdkVersion: Int = JVMConstants.KT_JVM_TARGET_VALUE,
     crossinline block: KotlinJvmTarget.() -> Unit = {}
 ) {
-    configJavaToolchain(jdkVersion)
+    jvmToolchain(jdkVersion)
     jvm {
         configJava(block)
     }
@@ -69,7 +64,7 @@ inline fun KotlinJvmProjectExtension.configKotlinJvm(
     jdkVersion: Int = JVMConstants.KT_JVM_TARGET_VALUE,
     crossinline block: KotlinJvmProjectExtension.() -> Unit = {}
 ) {
-    configJavaToolchain(jdkVersion)
+    jvmToolchain(jdkVersion)
     compilerOptions {
         javaParameters = true
         jvmTarget.set(JvmTarget.fromTarget(jdkVersion.toString()))
