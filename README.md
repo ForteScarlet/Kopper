@@ -1,5 +1,8 @@
 # Kopper
 
+[![Maven Central](https://img.shields.io/maven-central/v/love.forte.kopper/kopper-processor)](https://repo1.maven.org/maven2/love/forte/kopper/kopper-processor/)
+[![GitHub latest release](https://img.shields.io/github/v/release/ForteScarlet/Kopper)](https://github.com/ForteScarlet/Kopper/releases/latest)
+
 A simple processor for generating properties mappers against data models in Kotlin.
 
 Based on [KSP](https://kotlinlang.org/docs/ksp-overview.html)
@@ -28,7 +31,29 @@ Maps one or more properties from (a) `Source`(s) to a property corresponding to 
 
 ## Usage
 
-TODO
+Apply [ksp](https://github.com/google/ksp) first:
+
+```kotlin
+plugins {
+    kotlin("jvm") version "<KOTLIN VERSION>" // or multiplatform
+    id("com.google.devtools.ksp") version "<KSP VERSION>"
+}
+```
+
+add Kopper dependencies:
+
+```kotlin
+dependencies {
+    implementation("love.forte.kopper:kopper-annotation:$VERSION")
+    ksp("love.forte.kopper:kopper-processor:$VERSION")
+    // ...
+}
+```
+
+> For more information on how to use it
+> (e.g., [KSP with Kotlin Multiplatform](https://kotlinlang.org/docs/ksp-multiplatform.html) ),
+> please refer to the
+> [official KSP documentation](https://kotlinlang.org/docs/ksp-quickstart.html) .
 
 ## Examples
 
@@ -202,11 +227,10 @@ interface EvalTestMapper {
 
 An implementation will be generated for it:
 
-
 ```Kotlin
 internal object EvalTestMapperImpl : EvalTestMapper {
     override fun EvalTestMapper.Source.map1(): EvalTestMapper.Target {
-        val _t_0 = EvalTestMapper.Target(size = ( 1 + 1), name = this.name)
+        val _t_0 = EvalTestMapper.Target(size = (1 + 1), name = this.name)
         return _t_0
     }
 

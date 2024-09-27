@@ -89,12 +89,26 @@ fun RepositoryHandler.configPublishRepositories(
     } else {
         maven {
             name = "Release"
+            // https://central.sonatype.org/publish/publish-maven/#distribution-management-and-authentication
             setUrl("https://oss.sonatype.org/service/local/staging/deploy/maven2/")
-            val (username, password) = sonatypeUserInfoOrNull ?: return@maven
+            val (username, password) = sonatypeUserInfoOrNull ?: run {
+                logger.warn("sonatypeUserInfo is null.")
+                return@maven
+            }
             credentials {
                 this.username = username
                 this.password = password
             }
         }
+        // maven {
+        //     name = "Release"
+        //
+        // setUrl("https://oss.sonatype.org/service/local/staging/deploy/maven2/")
+        // val (username, password) = sonatypeUserInfoOrNull ?: return@maven
+        // credentials {
+        //     this.username = username
+        //     this.password = password
+        // }
+        // }
     }
 }
