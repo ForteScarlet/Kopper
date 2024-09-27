@@ -17,8 +17,8 @@
 
 plugins {
     kotlin("jvm")
-    `kopper-jvm-maven-publish`
     `kopper-dokka-partial-configure`
+    `kopper-jvm-maven-publish`
     alias(libs.plugins.ksp)
 }
 
