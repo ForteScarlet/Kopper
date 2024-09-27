@@ -146,7 +146,7 @@ internal object NestedMapperImpl : NestedMapper() {
 }
 ```
 
-### Nested with `@Map`
+### Nested with `@Mapping`
 
 Define a mapper interface and make it generate an implementation `class` (not `object`):
 
@@ -168,11 +168,11 @@ data class SubTarget(val name: String, val age: String)
 
 @Mapper(genTarget = MapperGenTarget.CLASS)
 interface NestedMapper {
-    @Map(target = "sub.name", source = "value.name")
+    @Mapping(target = "sub.name", source = "value.name")
     // Default source name is the MainSource, ⬆️
     // and it will be the receiver or first source in parameter if without @Map.MainSource.
-    @Map(target = "sub.age", source = "value.age", sourceName = "source2")
-    @Map(target = "size", source = "value.size", sourceName = "source3")
+    @Mapping(target = "sub.age", source = "value.age", sourceName = "source2")
+    @Mapping(target = "size", source = "value.size", sourceName = "source3")
     fun toTarget(source1: Source1, source2: Source2, source3: Source3): Target
 }
 ```
