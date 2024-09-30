@@ -25,6 +25,7 @@ import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFile
 import com.squareup.kotlinpoet.ksp.writeTo
+import love.forte.kopper.processor.def.KopperContext
 import love.forte.kopper.processor.def.MapperDef
 import love.forte.kopper.processor.def.resolveToMapperDef
 import love.forte.kopper.processor.mapper.MapperGenerator
@@ -43,6 +44,8 @@ internal class KopperProcessor(
         val mapperAnnoType = resolver.getClassDeclarationByName<love.forte.kopper.annotation.Mapper>()
             ?: error("Cannot find Mapper annotation declaration.")
 
+        val kopperContext = KopperContext(environment, resolver)
+
         resolver.getSymbolsWithAnnotation(MAPPER_ANNOTATION_NAME)
             .filterIsInstance<KSClassDeclaration>()
             // interface or abstract class.
@@ -53,8 +56,7 @@ internal class KopperProcessor(
                 }
 
                 val mapperDef = mapperDeclaration.resolveToMapperDef(
-                    environment = environment,
-                    resolver = resolver,
+                    kopperContext = kopperContext,
                     mapperAnnotation = mapperAnnotation
                 )
 

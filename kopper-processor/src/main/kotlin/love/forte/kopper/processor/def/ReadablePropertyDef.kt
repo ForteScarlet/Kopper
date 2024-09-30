@@ -16,10 +16,9 @@
 
 package love.forte.kopper.processor.def
 
-import com.google.devtools.ksp.processing.Resolver
-import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSDeclaration
 import com.google.devtools.ksp.symbol.KSNode
+import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.CodeBlock
 import love.forte.kopper.annotation.PropertyType
 
@@ -29,14 +28,14 @@ import love.forte.kopper.annotation.PropertyType
  * @author ForteScarlet
  */
 internal data class ReadablePropertyDef(
-    val environment: SymbolProcessorEnvironment,
-    val resolver: Resolver,
+    val kopperContext: KopperContext,
     // 可以读取的属性，可以在 action source 中获取
     // 属性也许是函数类型的?
     // 属性也许是某个类型的子属性，而不是 source 来的，
     // 那么就是从其他 property 调用而来。
 
     val name: String,
+    val type: KSType?,
     val declaration: KSDeclaration,
     val propertyType: PropertyType,
 

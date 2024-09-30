@@ -16,8 +16,6 @@
 
 package love.forte.kopper.processor.def
 
-import com.google.devtools.ksp.processing.Resolver
-import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import love.forte.kopper.annotation.MapperGenTarget
@@ -32,8 +30,7 @@ import love.forte.kopper.annotation.MapperGenVisibility
  * @author ForteScarlet
  */
 internal data class MapperDef(
-    val environment: SymbolProcessorEnvironment,
-    val resolver: Resolver,
+    val kopperContext: KopperContext,
     // nullable?
     val sourceDeclaration: KSClassDeclaration,
     /**

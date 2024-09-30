@@ -16,9 +16,12 @@
 
 package love.forte.kopper.processor.mapper
 
-import com.google.devtools.ksp.processing.Resolver
+import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ksp.toClassName
+import love.forte.kopper.processor.def.KopperContext
+import love.forte.kopper.processor.def.MapperActionSourceDef
 import love.forte.kopper.processor.def.readerCode
 import love.forte.kopper.processor.util.asClassDeclaration
 import love.forte.kopper.processor.util.tryTypeCast
@@ -33,6 +36,12 @@ internal interface MapperActionStatement {
      * Emit current ActionStatement to [builder].
      */
     fun emit(builder: CodeBlock.Builder)
+}
+
+internal object TODOActionStatement : MapperActionStatement {
+    override fun emit(builder: CodeBlock.Builder) {
+        builder.add("TODO(%S)", "Not yet implemented")
+    }
 }
 
 // Mapper Action statement,
@@ -63,7 +72,7 @@ internal class EvalMapperActionStatement(
 }
 
 internal class FromSourceMapperActionStatement(
-    private val resolver: Resolver,
+    private val kopperContext: KopperContext,
     private val sourceProperty: MapActionSourceProperty,
     private val targetProperty: MapActionTargetProperty,
 ) : MapperActionStatement {
@@ -89,7 +98,7 @@ internal class FromSourceMapperActionStatement(
         val targetClassDeclaration = targetProperty.def.declaration.asClassDeclaration()
 
         if (sourceClassDeclaration != null && targetClassDeclaration != null) {
-            readerCode = resolver.tryTypeCast(
+            readerCode = kopperContext.resolver.tryTypeCast(
                 readerCode,
                 nullable = sourceOrValueNullable,
                 sourceDeclaration = sourceClassDeclaration,
@@ -208,6 +217,53 @@ internal class RequiredInitialActionStatement(
     }
 }
 
+private data class IncomingNamePair(val name: String, val source: MapperActionSource)
+
+private inline fun resolveIncomingNamesAndReceiver(
+    sources: List<MapperActionSource>,
+    subAction: MapperAction,
+    onReceiver: (MapperActionSource) -> Unit
+): Array<IncomingNamePair?> {
+    val subActionSources = subAction.def.sources
+    val incomingNamePairs = Array<IncomingNamePair?>(subActionSources.count { it.incoming.index >= 0 }) { null }
+    // 根据类型、可空性寻找source的匹配入参名称
+    val sources0 = sources.toMutableList()
+
+    loop@ for (subActionSource in subActionSources) {
+        val subSourceIncoming = subActionSource.incoming
+        val iter = sources0.iterator()
+        while (iter.hasNext()) {
+            val incomingSource = iter.next()
+
+            // 类型匹配, incoming 是 sub source 的子类
+            val incoming = incomingSource.def.incoming
+            if (!subSourceIncoming.type.isAssignableFrom(incoming.type)) {
+                continue
+            }
+
+            // null匹配
+            // 如果入参不能为null，但是预期的可以为null
+            if (!subActionSource.incoming.nullable && incoming.nullable) {
+                continue
+            }
+
+            // 匹配，记录名称
+            // 如果index是 -1 则 receiver
+            if (subSourceIncoming.index < 0) {
+                onReceiver(incomingSource)
+                // receiver = incomingSource
+            } else {
+                val name: String = subSourceIncoming.name!!
+                incomingNamePairs[subSourceIncoming.index] = IncomingNamePair(name, incomingSource)
+            }
+
+            iter.remove()
+            continue@loop
+        }
+    }
+
+    return incomingNamePairs
+}
 
 internal class SubActionActionStatement(
     private val subAction: MapperAction,
@@ -220,50 +276,14 @@ internal class SubActionActionStatement(
         // sub action 应当与当前所求的属性值相匹配，
         // 因此只传递参数、而不需要判断结果的可空性，大概。
 
-        val subActionSources = subAction.def.sources
         // sub action 没有 target
 
         // first: sub action incoming name,
         // second: sources incoming name.
         var receiver: MapperActionSource? = null
 
-        val incomingNames = Array<Pair<String, MapperActionSource>?>(
-            subActionSources.count { it.incoming.index >= 0 }
-        ) { null }
-
-        // 根据类型、可空性寻找source的匹配入参名称
-        val sources0 = sources.toMutableList()
-
-        loop@ for (subActionSource in subActionSources) {
-            val subSourceIncoming = subActionSource.incoming
-            val iter = sources0.iterator()
-            while (iter.hasNext()) {
-                val incomingSource = iter.next()
-
-                // 类型匹配, incoming 是 sub source 的子类
-                val incoming = incomingSource.def.incoming
-                if (!subSourceIncoming.type.isAssignableFrom(incoming.type)) {
-                    continue
-                }
-
-                // null匹配
-                // 如果入参不能为null，但是预期的可以为null
-                if (!subActionSource.incoming.nullable && incoming.nullable) {
-                    continue
-                }
-
-                // 匹配，记录名称
-                // 如果index是 -1 则 receiver
-                if (subSourceIncoming.index < 0) {
-                    receiver = incomingSource
-                } else {
-                    val name: String = subSourceIncoming.name!!
-                    incomingNames[subSourceIncoming.index] = name to incomingSource
-                }
-
-                iter.remove()
-                continue@loop
-            }
+        val incomingNamePair = resolveIncomingNamesAndReceiver(sources, subAction) {
+            receiver = it
         }
 
         val invokeCode = CodeBlock.builder().apply {
@@ -271,14 +291,14 @@ internal class SubActionActionStatement(
 
             // receiver is first
             if (receiver != null) {
-                add("%L, ", receiver.def.incoming.name ?: "this")
+                add("%L, ", receiver!!.def.incoming.name ?: "this")
             }
 
-            incomingNames
+            incomingNamePair
                 .forEachIndexed { index, pair ->
                     val (name, value) = pair ?: return@forEachIndexed
                     add("%L·=·%L", name, value.def.incoming.name ?: "this")
-                    if (index != incomingNames.lastIndex) {
+                    if (index != incomingNamePair.lastIndex) {
                         add(", ")
                     }
                 }
@@ -289,5 +309,205 @@ internal class SubActionActionStatement(
         builder.add(targetPropertyRef)
         builder.add("·=·")
         builder.add(invokeCode)
+    }
+}
+
+/**
+ * iterable map to iterable.
+ */
+internal class SubIter2IterActionStatement(
+    private val subAction: MapperAction,
+    private val sources: List<MapperActionSource>,
+    private val sourceProperty: MapActionSourceProperty,
+    private val targetProperty: MapActionTargetProperty,
+    private val subTargetType: KSType,
+    private val sourceMapItSource: MapperActionSourceDef
+) : MapperActionStatement {
+    override fun emit(builder: CodeBlock.Builder) {
+        // 目标如果是 Collection、List，直接 map
+        // 否则 mapTo(mutableSetOf())
+        // source.map { itSource.name -> subAction(...) }
+
+        // 先把map内的函数构造出来，map it 的名字为 sourceMapItSource.incoming.name
+        // first: sub action incoming name,
+        // second: sources incoming name.
+        var receiver: MapperActionSource? = null
+
+        val incomingNamePair = resolveIncomingNamesAndReceiver(sources, subAction) {
+            receiver = it
+        }
+
+        val mapInvokeCode = CodeBlock.builder().apply {
+            add("%L(", subAction.def.name)
+
+            // receiver is first
+            if (receiver != null) {
+                add("%L, ", receiver!!.def.incoming.name ?: "this")
+            }
+
+            incomingNamePair
+                .forEachIndexed { index, pair ->
+                    val (name, value) = pair ?: return@forEachIndexed
+                    add("%L·=·%L", name, value.def.incoming.name ?: "this")
+                    if (index != incomingNamePair.lastIndex) {
+                        add(", ")
+                    }
+                }
+            add(")")
+        }.build()
+
+        // 然后选择 map
+        // target 是 collection 或 list -> source.map
+        // target 是 set, mutableSet -> mapTo(mutableSetOf())
+        // 是 MutableColl, MutableList -> mapTo(mutableListOf())
+        // 其他的，不管，用 map
+        // .mapFunction { name -> }
+        val targetDeclaration = targetProperty.def.declaration
+        val targetPackageName = targetDeclaration.packageName.asString()
+        val targetSimpleName = targetDeclaration.simpleName.asString()
+        val mapFunctionCodeBuilder = CodeBlock.builder()
+
+        var ifNullThenMember: MemberName? = null
+
+        when {
+            targetPackageName != KT_COLL_PKG && targetSimpleName != JAVA_UTIL -> {
+                mapFunctionCodeBuilder.add("%M", COLL_MAP)
+                ifNullThenMember = EMPTY_LIST
+            }
+
+            else -> when (targetSimpleName) {
+                "List", "Collection", "Iterable" -> {
+                    mapFunctionCodeBuilder.add("%M", COLL_MAP)
+                    ifNullThenMember = EMPTY_LIST
+                }
+                "Set" -> {
+                    mapFunctionCodeBuilder.add("%M(%M())", COLL_MAP_TO, MUT_SET_OF)
+                    ifNullThenMember = EMPTY_SET
+                }
+                "MutableSet" -> {
+                    mapFunctionCodeBuilder.add("%M(%M())", COLL_MAP_TO, MUT_SET_OF)
+                    ifNullThenMember = MUT_SET_OF
+                }
+                else -> {
+                    mapFunctionCodeBuilder.add("%M(%M())", COLL_MAP_TO, MUT_LIST_OF)
+                    ifNullThenMember = MUT_LIST_OF
+                }
+            }
+        }
+
+        val invokeCode = CodeBlock.builder().apply {
+            // source.map
+            add(sourceProperty.propertyAccessor())
+            if (sourceProperty.valueNullable) {
+                add("?")
+            }
+            add(".")
+            add(mapFunctionCodeBuilder.build())
+            beginControlFlow(" { %L -> ", sourceMapItSource.incoming.name!!)
+            add(mapInvokeCode)
+            endControlFlow()
+        }.build()
+
+        val targetPropertyRef = targetProperty.propertyRef
+        builder.add(targetPropertyRef)
+        builder.add("·=·")
+        builder.add(invokeCode)
+        if (!targetProperty.def.nullable && sourceProperty.valueNullable) {
+            builder.add(" ?: %M()", ifNullThenMember)
+        }
+    }
+
+    companion object {
+        const val KT_COLL_PKG = "kotlin.collections"
+        const val JAVA_UTIL = "java.util"
+
+
+        // Iterable.map
+        val COLL_MAP = MemberName("kotlin.collections", "map")
+
+        // Iterable.mapTo
+        val COLL_MAP_TO = MemberName("kotlin.collections", "mapTo")
+
+        val MUT_SET_OF = MemberName("kotlin.collections", "mutableSetOf")
+        val MUT_LIST_OF = MemberName("kotlin.collections", "mutableListOf")
+
+        val EMPTY_LIST = MemberName("kotlin.collections", "emptyList")
+        val EMPTY_SET = MemberName("kotlin.collections", "emptySet")
+    }
+}
+
+internal class SubIter2TargetActionStatement(
+    private val subAction: MapperAction,
+    private val sources: List<MapperActionSource>,
+    private val sourceProperty: MapActionSourceProperty,
+    private val targetProperty: MapActionTargetProperty,
+    private val mapFirstSource: MapperActionSourceDef
+) : MapperActionStatement {
+    override fun emit(builder: CodeBlock.Builder) {
+        // 先把转化用的函数构造出来，map it 的名字为 sourceMapItSource.incoming.name
+        // first: sub action incoming name,
+        // second: sources incoming name.
+        var receiver: MapperActionSource? = null
+
+        val incomingNamePair = resolveIncomingNamesAndReceiver(sources, subAction) {
+            receiver = it
+        }
+
+        val mapInvokeCode = CodeBlock.builder().apply {
+            add("%L(", subAction.def.name)
+
+            // receiver is first
+            if (receiver != null) {
+                add("%L, ", receiver!!.def.incoming.name ?: "this")
+            }
+
+            incomingNamePair
+                .forEachIndexed { index, pair ->
+                    val (name, value) = pair ?: return@forEachIndexed
+                    add("%L·=·%L", name, value.def.incoming.name ?: "this")
+                    if (index != incomingNamePair.lastIndex) {
+                        add(", ")
+                    }
+                }
+            add(")")
+        }.build()
+
+        // target not null, source iter nullable:
+        //   target = source?.firstOrNull()?.let { s -> subAction() }!!
+        // target nullable, source not null
+        //   target = source.firstOrNull()?.let { s -> subAction() }
+        // target not null, source not null
+        //   target = source.firstOrNull()?.let { s -> subAction() }!!
+
+        val sourceValueNullable = sourceProperty.valueNullable
+
+        val sourceIterReadCode = CodeBlock.builder().apply {
+            add(sourceProperty.propertyAccessor())
+            if (sourceValueNullable) {
+                add("?")
+            }
+            beginControlFlow(".%M()?.let { %L -> ", ITER_FIRST_OR_NULL, mapFirstSource.incoming.name!!)
+            add(mapInvokeCode)
+            endControlFlow()
+        }.build()
+
+
+        val invokeCode = CodeBlock.builder().apply {
+            add(sourceIterReadCode)
+            if (!targetProperty.def.nullable) {
+                // target not nullable
+                add("!!")
+            }
+        }.build()
+
+        val targetPropertyRef = targetProperty.propertyRef
+        builder.add(targetPropertyRef)
+        builder.add("·=·")
+        builder.add(invokeCode)
+    }
+
+
+    companion object {
+        val ITER_FIRST_OR_NULL = MemberName("kotlin.collections", "firstOrNull")
     }
 }

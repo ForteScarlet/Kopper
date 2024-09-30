@@ -18,8 +18,6 @@ package love.forte.kopper.processor.def
 
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.isAbstract
-import com.google.devtools.ksp.processing.Resolver
-import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.*
 import love.forte.kopper.annotation.Mapping
 import love.forte.kopper.processor.util.asClassDeclaration
@@ -30,8 +28,7 @@ import java.util.*
 
 internal class MapperDefResolveContext(
     private val sourceDeclaration: KSClassDeclaration,
-    val environment: SymbolProcessorEnvironment,
-    val resolver: Resolver,
+    val kopperContext: KopperContext,
     mapperAnnotation: KSAnnotation,
 ) {
     // private val mapperAnnoDeclaration = resolver.getClassDeclarationByName<love.forte.kopper.annotation.Mapper>()
@@ -39,18 +36,21 @@ internal class MapperDefResolveContext(
     //
     // val mapperAnnoType = mapperAnnoDeclaration.asStarProjectedType()
 
-    private val mappingAnnoDeclaration = resolver.getClassDeclarationByName<Mapping>()
-        ?: error("Cannot find `Map` annotation declaration.")
+    private val mappingAnnoDeclaration =
+        kopperContext.resolver.getClassDeclarationByName<Mapping>()
+            ?: error("Cannot find `Map` annotation declaration.")
 
     val mapAnnoType = mappingAnnoDeclaration.asStarProjectedType()
 
-    private val mappingTargetAnnoDeclaration = resolver.getClassDeclarationByName<Mapping.Target>()
-        ?: error("Cannot find `Map.Target` declaration.")
+    private val mappingTargetAnnoDeclaration =
+        kopperContext.resolver.getClassDeclarationByName<Mapping.Target>()
+            ?: error("Cannot find `Map.Target` declaration.")
 
     val mapTargetAnnoType = mappingTargetAnnoDeclaration.asStarProjectedType()
 
-    private val mappingMainSourceAnnoDeclaration = resolver.getClassDeclarationByName<Mapping.MainSource>()
-        ?: error("Cannot find `Map.MainSource` declaration.")
+    private val mappingMainSourceAnnoDeclaration =
+        kopperContext.resolver.getClassDeclarationByName<Mapping.MainSource>()
+            ?: error("Cannot find `Map.MainSource` declaration.")
 
     val mapMainSourceAnnoType = mappingMainSourceAnnoDeclaration.asStarProjectedType()
 
@@ -69,11 +69,14 @@ internal class MapperDefResolveContext(
  * 将一个 [KSClassDeclaration] 分析为 [MapperDef]
  */
 internal fun KSClassDeclaration.resolveToMapperDef(
-    environment: SymbolProcessorEnvironment,
-    resolver: Resolver,
+    kopperContext: KopperContext,
     mapperAnnotation: KSAnnotation,
 ): MapperDef {
-    val mapperContext = MapperDefResolveContext(this, environment, resolver, mapperAnnotation)
+    val mapperContext = MapperDefResolveContext(
+        this,
+        kopperContext,
+        mapperAnnotation
+    )
 
     val abstractFunctions = getAllFunctions()
         .filter { it.isAbstract }
@@ -85,8 +88,7 @@ internal fun KSClassDeclaration.resolveToMapperDef(
     }
 
     return MapperDef(
-        environment = environment,
-        resolver = resolver,
+        kopperContext = kopperContext,
         sourceDeclaration = this,
         simpleName = mapperContext.mapperName,
         packageName = mapperContext.mapperPackage,
@@ -153,8 +155,8 @@ internal fun MapperDefResolveContext.resolveActionSources(
             }
 
             MapperActionSourceDef(
-                environment = environment,
-                resolver = resolver,
+                kopperContext = kopperContext,
+                type = receiverType,
                 declaration = receiverType.declaration.asClassDeclaration()!!,
                 incoming = MapActionIncoming(
                     name = null,
@@ -185,8 +187,8 @@ internal fun MapperDefResolveContext.resolveActionSources(
         val type = parameter.type.resolve()
 
         val def = MapperActionSourceDef(
-            environment = environment,
-            resolver = resolver,
+            kopperContext = kopperContext,
+            type = type,
             declaration = type.declaration.asClassDeclaration()!!,
             incoming = MapActionIncoming(
                 name = parameter.name?.asString(), // TODO null?
@@ -224,7 +226,9 @@ internal fun MapperDefResolveContext.resolveActionSources(
 internal fun MapperDefResolveContext.resolveActionTarget(
     function: KSFunctionDeclaration
 ): MapperActionTargetDef {
-    val returnType = function.returnType?.resolve()?.takeIf { !resolver.builtIns.unitType.isAssignableFrom(it) }
+    val returnType = function.returnType?.resolve()?.takeIf {
+        !kopperContext.resolver.builtIns.unitType.isAssignableFrom(it)
+    }
 
     fun checkIncomingType(type: KSType) {
         check(returnType == null || returnType.isAssignableFrom(type)) {
@@ -242,8 +246,7 @@ internal fun MapperDefResolveContext.resolveActionTarget(
         checkIncomingType(receiverType)
 
         return MapperActionTargetDef(
-            environment = environment,
-            resolver = resolver,
+            kopperContext = kopperContext,
             declaration = receiverType.declaration.asClassDeclaration()!!,
             incoming = MapActionIncoming(
                 name = null,
@@ -283,8 +286,7 @@ internal fun MapperDefResolveContext.resolveActionTarget(
         checkIncomingType(parameterType)
 
         return MapperActionTargetDef(
-            environment = environment,
-            resolver = resolver,
+            kopperContext = kopperContext,
             declaration = parameterType.declaration.asClassDeclaration()!!, // TODO null?
             incoming = MapActionIncoming(
                 name = targetParameter.name?.asString(), // TODO name?
@@ -314,8 +316,7 @@ internal fun MapperDefResolveContext.resolveActionTarget(
     }
 
     return MapperActionTargetDef(
-        environment = environment,
-        resolver = resolver,
+        kopperContext = kopperContext,
         declaration = returnDeclaration,
         incoming = null,
         returns = true,
@@ -333,8 +334,7 @@ internal fun MapperDefResolveContext.resolveMapActionDefs(
     source: KSFunctionDeclaration,
 ) {
     val action = MapperActionDef(
-        environment = environment,
-        resolver = resolver,
+        kopperContext = kopperContext,
         name = name,
         mappingArgs = mappingArgs,
         sources = sources,

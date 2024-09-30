@@ -16,8 +16,6 @@
 
 package love.forte.kopper.processor.def
 
-import com.google.devtools.ksp.processing.Resolver
-import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSNode
 
@@ -28,8 +26,7 @@ import com.google.devtools.ksp.symbol.KSNode
  * @author ForteScarlet
  */
 internal data class MapperActionDef(
-    val environment: SymbolProcessorEnvironment,
-    val resolver: Resolver,
+    val kopperContext: KopperContext,
     /**
      * The name of this action in a mapper.
      */

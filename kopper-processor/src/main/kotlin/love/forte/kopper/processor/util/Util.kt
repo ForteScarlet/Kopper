@@ -111,6 +111,7 @@ internal fun KSDeclaration.isMappableStructType(builtIns: KSBuiltIns): Boolean {
         this == builtIns.charType.declaration -> false
         this == builtIns.booleanType.declaration -> false
         this == builtIns.stringType.declaration -> false
+        this == builtIns.iterableType.declaration -> false
         // is number, for UXxx
         isUByte() || isUShort() || isUInt() || isULong() -> false
         // 更多检测?
@@ -132,10 +133,6 @@ internal fun KSDeclaration.isMappableStructType(builtIns: KSBuiltIns): Boolean {
         else -> false
     }
 }
-
-internal fun KSDeclaration.isDirectMappableType(builtIns: KSBuiltIns): Boolean =
-    !isMappableStructType(builtIns)
-
 
 internal val Nullability.isNullable: Boolean
     get() = this != Nullability.NOT_NULL
