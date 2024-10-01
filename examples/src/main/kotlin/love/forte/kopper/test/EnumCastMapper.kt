@@ -19,10 +19,6 @@ package love.forte.kopper.test
 import love.forte.kopper.annotation.Mapper
 import love.forte.kopper.annotation.Mapping
 
-/**
- *
- * @author ForteScarlet
- */
 @Mapper
 interface EnumCastMapper {
     enum class SourceE {

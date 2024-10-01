@@ -18,34 +18,30 @@ package love.forte.kopper.test
 
 import love.forte.kopper.annotation.Mapper
 
-/**
- *
- * @author ForteScarlet
- */
 @Mapper
-interface Iter2TargetMapper {
+interface Iter2TargetSourceArgNullableMapper {
     data class SubSource(val name: String)
     data class SubSource2(val name: String?)
 
-    data class ListSource1(val value: List<SubSource>)
-    data class ListSource2(val value: List<SubSource2>)
-    data class ListSource3(val value: List<SubSource>?)
-    data class ListSource4(val value: List<SubSource2>?)
+    data class ListSource1(val value: List<SubSource?>)
+    data class ListSource2(val value: List<SubSource2?>)
+    data class ListSource3(val value: List<SubSource?>?)
+    data class ListSource4(val value: List<SubSource2?>?)
 
-    data class SetSource1(val value: List<SubSource>)
-    data class SetSource2(val value: List<SubSource2>)
-    data class SetSource3(val value: List<SubSource>?)
-    data class SetSource4(val value: List<SubSource2>?)
+    data class SetSource1(val value: List<SubSource?>)
+    data class SetSource2(val value: List<SubSource2?>)
+    data class SetSource3(val value: List<SubSource?>?)
+    data class SetSource4(val value: List<SubSource2?>?)
 
-    data class CollSource1(val value: Collection<SubSource>)
-    data class CollSource2(val value: Collection<SubSource2>)
-    data class CollSource3(val value: Collection<SubSource>?)
-    data class CollSource4(val value: Collection<SubSource2>?)
+    data class CollSource1(val value: Collection<SubSource?>)
+    data class CollSource2(val value: Collection<SubSource2?>)
+    data class CollSource3(val value: Collection<SubSource?>?)
+    data class CollSource4(val value: Collection<SubSource2?>?)
 
-    data class IterSource1(val value: Iterable<SubSource>)
-    data class IterSource2(val value: Iterable<SubSource2>)
-    data class IterSource3(val value: Iterable<SubSource>?)
-    data class IterSource4(val value: Iterable<SubSource2>?)
+    data class IterSource1(val value: Iterable<SubSource?>)
+    data class IterSource2(val value: Iterable<SubSource2?>)
+    data class IterSource3(val value: Iterable<SubSource?>?)
+    data class IterSource4(val value: Iterable<SubSource2?>?)
 
 
     data class SubTarget(val name: String)

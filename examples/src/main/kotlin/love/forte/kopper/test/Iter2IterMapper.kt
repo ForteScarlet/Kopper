@@ -18,10 +18,6 @@ package love.forte.kopper.test
 
 import love.forte.kopper.annotation.Mapper
 
-/**
- *
- * @author ForteScarlet
- */
 @Mapper
 interface Iter2IterMapper {
     data class SubSource1(val name: String)

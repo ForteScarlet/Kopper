@@ -20,10 +20,6 @@ import love.forte.kopper.annotation.Mapper
 import love.forte.kopper.annotation.Mapping
 
 
-/**
- *
- * @author ForteScarlet
- */
 @Mapper
 interface CastMapper {
     data class Source(val number: Int)
@@ -34,10 +30,6 @@ interface CastMapper {
     fun Source.map1(@Mapping.Target target: Target)
 }
 
-/**
- *
- * @author ForteScarlet
- */
 @Mapper
 interface NullableCastMapper {
     data class Source(val number: Int?)
@@ -48,10 +40,6 @@ interface NullableCastMapper {
     fun Source.map1(@Mapping.Target target: Target)
 }
 
-/**
- *
- * @author ForteScarlet
- */
 @Mapper
 abstract class AbstractCastMapper {
     data class Source(val number: Int?)

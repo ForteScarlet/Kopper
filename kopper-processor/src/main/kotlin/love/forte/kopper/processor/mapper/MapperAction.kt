@@ -23,6 +23,7 @@ import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import love.forte.kopper.processor.def.*
 import love.forte.kopper.processor.util.asClassDeclaration
+import love.forte.kopper.processor.util.inStatement
 import love.forte.kopper.processor.util.isMappableStructType
 import love.forte.kopper.processor.util.isNullable
 import java.util.*
@@ -57,9 +58,11 @@ internal class MapperAction internal constructor(
     fun generate() {
         val codeBuilder = CodeBlock.builder()
         for (statement in statements) {
-            codeBuilder.add("«")
-            statement.emit(codeBuilder)
-            codeBuilder.add("\n»")
+            codeBuilder.inStatement(newLine = true) {
+                statement.emit(codeBuilder)
+            }
+            // codeBuilder.add("«")
+            // codeBuilder.add("\n»")
         }
         // return target
         if (target.def.returns) {
@@ -468,6 +471,7 @@ internal class MapperAction internal constructor(
                         sources = expectSourcesForIncoming.map { MapperActionSource(action = this, def = it) },
                         sourceProperty = sourceProperty,
                         targetProperty = targetProperty,
+                        subSourceType = sourceArgumentType,
                         subTargetType = targetArgumentType,
                         sourceMapItSource = mapItSource
                     )
@@ -476,7 +480,7 @@ internal class MapperAction internal constructor(
                 }
 
                 isSourceIter -> {
-                    // TODO source 是 iterable
+                    // source 是 iterable
                     // 取出第一个元素，然后跟 mapped 一样
                     val sourceType = sourceProperty.def.type ?: run {
                         val msg = "Unknown source type for iterable"
@@ -557,9 +561,68 @@ internal class MapperAction internal constructor(
 
                 isTargetIter -> {
                     // TODO target 是 iterable
+                    val targetType = targetProperty.def.type ?: run {
+                        val msg = "Unknown target type for iterable"
+                        def.kopperContext.logger.error(msg, source.def.node)
+                        error(msg)
+                    }
+                    val targetArgumentType = targetType.arguments.first().type?.resolve()
+                        ?: run {
+                            val msg = "Unknown target argument type for iterable"
+                            def.kopperContext.logger.error(msg, source.def.node)
+                            error(msg)
+                        }
 
-                    // TODO
-                    addStatement(TODOActionStatement)
+                    val subArgs = subArgs()
+                    val expectSourcesForIncoming = expectSourcesForIncoming(subArgs)
+                        .mapTo(LinkedList()) { it.copy(isMain = false) }
+
+                    if (expectSourcesForIncoming.isEmpty()) {
+                        expectSourcesForIncoming.add(def.sources.find { it.isMain }!!)
+                    } else if (expectSourcesForIncoming.none { it.isMain }) {
+                        // 没有main，取第一个作为 main
+                        expectSourcesForIncoming.addFirst(
+                            expectSourcesForIncoming.removeFirst().copy(isMain = true)
+                        )
+                    }
+
+                    val expectSources = expectSourcesForIncoming.mapIndexed { i, s ->
+                        // 没有入参名字的，给个名字
+                        // 一般来讲就一个没有的
+                        if (s.incoming.name == null) {
+                            s.copy(incoming = s.incoming.copy(name = "__s_$i"))
+                        } else {
+                            s
+                        }
+                    }
+
+                    val expectTarget = MapperActionTargetDef(
+                        kopperContext = def.kopperContext,
+                        declaration = targetArgumentType.declaration.asClassDeclaration()!!, // TODO as class decl?
+                        incoming = null,
+                        returns = true,
+                        nullable = targetArgumentType.nullability.isNullable,
+                        node = targetProperty.def.node
+                    )
+
+                    val subAction = this.generator.requestAction(
+                        sources = expectSources,
+                        target = expectTarget,
+                        name = "to${expectTarget.declaration.simpleName.asString()}",
+                        mappingArgs = subArgs,
+                        node = def.node,
+                        sourcePrefix = defaultSourcePrefix?.let { "$it.$name" } ?: name,
+                    )
+
+                    val statement = Source2IterTargetActionStatement(
+                        subAction = subAction,
+                        sources = expectSourcesForIncoming.map { MapperActionSource(action = this, def = it) },
+                        targetProperty = targetProperty
+                    )
+
+                    addStatement(statement)
+
+                    // addStatement(TODOActionStatement)
                 }
 
                 // 其他，正常映射

@@ -18,6 +18,7 @@ package love.forte.kopper.processor.util
 
 import com.google.devtools.ksp.processing.KSBuiltIns
 import com.google.devtools.ksp.symbol.*
+import com.squareup.kotlinpoet.CodeBlock
 import love.forte.kopper.processor.def.NodeArg
 
 
@@ -136,3 +137,23 @@ internal fun KSDeclaration.isMappableStructType(builtIns: KSBuiltIns): Boolean {
 
 internal val Nullability.isNullable: Boolean
     get() = this != Nullability.NOT_NULL
+
+
+internal inline fun CodeBlock.Builder.inControlFlow(
+    controlFlow: String,
+    vararg args: Any?,
+    block: CodeBlock.Builder.() -> Unit,
+): CodeBlock.Builder {
+    beginControlFlow(controlFlow = controlFlow, *args)
+    block()
+    return endControlFlow()
+}
+
+internal inline fun CodeBlock.Builder.inStatement(
+    newLine: Boolean = false,
+    block: CodeBlock.Builder.() -> Unit,
+): CodeBlock.Builder {
+    add("«")
+    block()
+    return if (newLine) add("\n»") else add("»")
+}

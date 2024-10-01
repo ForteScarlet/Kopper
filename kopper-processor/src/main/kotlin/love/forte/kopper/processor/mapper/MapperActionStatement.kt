@@ -24,6 +24,8 @@ import love.forte.kopper.processor.def.KopperContext
 import love.forte.kopper.processor.def.MapperActionSourceDef
 import love.forte.kopper.processor.def.readerCode
 import love.forte.kopper.processor.util.asClassDeclaration
+import love.forte.kopper.processor.util.inControlFlow
+import love.forte.kopper.processor.util.isNullable
 import love.forte.kopper.processor.util.tryTypeCast
 
 
@@ -38,6 +40,7 @@ internal interface MapperActionStatement {
     fun emit(builder: CodeBlock.Builder)
 }
 
+@Suppress("unused")
 internal object TODOActionStatement : MapperActionStatement {
     override fun emit(builder: CodeBlock.Builder) {
         builder.add("TODO(%S)", "Not yet implemented")
@@ -134,11 +137,15 @@ internal class FromSourceMapperActionStatement(
                 // (readCode).also { it -> %L = it }
                 builder.add("(")
                 builder.add(readerCode)
-                builder.beginControlFlow(")?.also")
-                // builder.add(")?.also·{ ")
-                builder.add(targetPropertyRef)
-                builder.add("·=·it")
-                builder.endControlFlow()
+                builder.inControlFlow(")?.also") {
+                    add(targetPropertyRef)
+                    add("·=·it")
+                }
+                // builder.beginControlFlow(")?.also")
+                // // builder.add(")?.also·{ ")
+                // builder.add(targetPropertyRef)
+                // builder.add("·=·it")
+                // builder.endControlFlow()
             }
         }
     }
@@ -208,7 +215,7 @@ internal class RequiredInitialActionStatement(
                 builder.add(
                     "/* " +
                         "The input parameter of target already exists and cannot be null, " +
-                        "so it doesn't need to be initialised. " +
+                        "so it doesn't need to be initialized. " +
                         "*/"
                 )
 
@@ -320,6 +327,7 @@ internal class SubIter2IterActionStatement(
     private val sources: List<MapperActionSource>,
     private val sourceProperty: MapActionSourceProperty,
     private val targetProperty: MapActionTargetProperty,
+    private val subSourceType: KSType,
     private val subTargetType: KSType,
     private val sourceMapItSource: MapperActionSourceDef
 ) : MapperActionStatement {
@@ -367,29 +375,54 @@ internal class SubIter2IterActionStatement(
         val targetSimpleName = targetDeclaration.simpleName.asString()
         val mapFunctionCodeBuilder = CodeBlock.builder()
 
-        var ifNullThenMember: MemberName? = null
+        val ifNullThenMember: MemberName?
+        // if subTargetType non-null but sub source type nullable,
+        // should use mapNotNull(to)
+        val mapElementNonnull = !subTargetType.nullability.isNullable
+            && subSourceType.nullability.isNullable
 
         when {
             targetPackageName != KT_COLL_PKG && targetSimpleName != JAVA_UTIL -> {
-                mapFunctionCodeBuilder.add("%M", COLL_MAP)
+                mapFunctionCodeBuilder.add(
+                    "%M",
+                    if (mapElementNonnull) COLL_MAP_NN else COLL_MAP
+                )
                 ifNullThenMember = EMPTY_LIST
             }
 
             else -> when (targetSimpleName) {
                 "List", "Collection", "Iterable" -> {
-                    mapFunctionCodeBuilder.add("%M", COLL_MAP)
+                    mapFunctionCodeBuilder.add(
+                        "%M",
+                        if (mapElementNonnull) COLL_MAP_NN else COLL_MAP
+                    )
                     ifNullThenMember = EMPTY_LIST
                 }
+
                 "Set" -> {
-                    mapFunctionCodeBuilder.add("%M(%M())", COLL_MAP_TO, MUT_SET_OF)
+                    mapFunctionCodeBuilder.add(
+                        "%M(%M())",
+                        if (mapElementNonnull) COLL_MAP_TO_NN else COLL_MAP_TO,
+                        MUT_SET_OF
+                    )
                     ifNullThenMember = EMPTY_SET
                 }
+
                 "MutableSet" -> {
-                    mapFunctionCodeBuilder.add("%M(%M())", COLL_MAP_TO, MUT_SET_OF)
+                    mapFunctionCodeBuilder.add(
+                        "%M(%M())",
+                        if (mapElementNonnull) COLL_MAP_TO_NN else COLL_MAP_TO,
+                        MUT_SET_OF
+                    )
                     ifNullThenMember = MUT_SET_OF
                 }
+
                 else -> {
-                    mapFunctionCodeBuilder.add("%M(%M())", COLL_MAP_TO, MUT_LIST_OF)
+                    mapFunctionCodeBuilder.add(
+                        "%M(%M())",
+                        if (mapElementNonnull) COLL_MAP_TO_NN else COLL_MAP_TO,
+                        MUT_LIST_OF
+                    )
                     ifNullThenMember = MUT_LIST_OF
                 }
             }
@@ -403,9 +436,12 @@ internal class SubIter2IterActionStatement(
             }
             add(".")
             add(mapFunctionCodeBuilder.build())
-            beginControlFlow(" { %L -> ", sourceMapItSource.incoming.name!!)
-            add(mapInvokeCode)
-            endControlFlow()
+            inControlFlow(" { %L -> ", sourceMapItSource.incoming.name!!) {
+                add(mapInvokeCode)
+            }
+            // beginControlFlow(" { %L -> ", sourceMapItSource.incoming.name!!)
+            // add(mapInvokeCode)
+            // endControlFlow()
         }.build()
 
         val targetPropertyRef = targetProperty.propertyRef
@@ -424,9 +460,11 @@ internal class SubIter2IterActionStatement(
 
         // Iterable.map
         val COLL_MAP = MemberName("kotlin.collections", "map")
+        val COLL_MAP_NN = MemberName("kotlin.collections", "mapNotNull")
 
         // Iterable.mapTo
         val COLL_MAP_TO = MemberName("kotlin.collections", "mapTo")
+        val COLL_MAP_TO_NN = MemberName("kotlin.collections", "mapNotNullTo")
 
         val MUT_SET_OF = MemberName("kotlin.collections", "mutableSetOf")
         val MUT_LIST_OF = MemberName("kotlin.collections", "mutableListOf")
@@ -486,9 +524,12 @@ internal class SubIter2TargetActionStatement(
             if (sourceValueNullable) {
                 add("?")
             }
-            beginControlFlow(".%M()?.let { %L -> ", ITER_FIRST_OR_NULL, mapFirstSource.incoming.name!!)
-            add(mapInvokeCode)
-            endControlFlow()
+            inControlFlow(".%M()?.let { %L -> ", ITER_FIRST_OR_NULL, mapFirstSource.incoming.name!!) {
+                add(mapInvokeCode)
+            }
+            // beginControlFlow(".%M()?.let { %L -> ", ITER_FIRST_OR_NULL, mapFirstSource.incoming.name!!)
+            // add(mapInvokeCode)
+            // endControlFlow()
         }.build()
 
 
@@ -509,5 +550,120 @@ internal class SubIter2TargetActionStatement(
 
     companion object {
         val ITER_FIRST_OR_NULL = MemberName("kotlin.collections", "firstOrNull")
+    }
+}
+
+/**
+ * 一个普通的 source 转为 iter 的 target
+ * 用 `listOf` 之类的包裹起来
+ */
+internal class Source2IterTargetActionStatement(
+    private val subAction: MapperAction,
+    private val sources: List<MapperActionSource>,
+    private val targetProperty: MapActionTargetProperty,
+) : MapperActionStatement {
+    override fun emit(builder: CodeBlock.Builder) {
+        // 先把转化用的函数构造出来，map it 的名字为 sourceMapItSource.incoming.name
+        // first: sub action incoming name,
+        // second: sources incoming name.
+        var receiver: MapperActionSource? = null
+
+        val incomingNamePair = resolveIncomingNamesAndReceiver(sources, subAction) {
+            receiver = it
+        }
+
+        val mapInvokeCode = CodeBlock.builder().apply {
+            add("%L(", subAction.def.name)
+
+            // receiver is first
+            if (receiver != null) {
+                add("%L, ", receiver!!.def.incoming.name ?: "this")
+            }
+
+            incomingNamePair
+                .forEachIndexed { index, pair ->
+                    val (name, value) = pair ?: return@forEachIndexed
+                    add("%L·=·%L", name, value.def.incoming.name ?: "this")
+                    if (index != incomingNamePair.lastIndex) {
+                        add(", ")
+                    }
+                }
+            add(")")
+        }.build()
+
+        // 如果内容不可为null但是source nullable, (source.action)?.let { listOf(it) }
+        // 否则 listOf(source.action)
+
+        // 转化函数包裹在 listOf, setOf 中
+        // 如果target是 list, coll, iter -> listOf
+        // 如果是 set -> setOf
+        // mut list, coll -> mut list of
+        // mut set -> mut list of
+
+        val targetPackageName = targetProperty.def.declaration.packageName.asString()
+        val targetSimpleName = targetProperty.def.declaration.simpleName.asString()
+
+        val listActionMember: MemberName
+        var ifNullThenMember: MemberName = EMPTY_LIST
+
+        when {
+            targetPackageName != SubIter2IterActionStatement.KT_COLL_PKG
+                && targetSimpleName != SubIter2IterActionStatement.JAVA_UTIL -> {
+                listActionMember = LIST_OF
+            }
+
+            else -> when (targetSimpleName) {
+                "List", "Collection", "Iterable" -> {
+                    listActionMember = LIST_OF
+                }
+
+                "Set" -> {
+                    listActionMember = SET_OF
+                    ifNullThenMember = EMPTY_SET
+                }
+
+                "MutableSet" -> {
+                    listActionMember = MUT_SET_OF
+                    ifNullThenMember = MUT_SET_OF
+                }
+
+                else -> {
+                    listActionMember = LIST_OF
+                    ifNullThenMember = MUT_LIST_OF
+                }
+            }
+        }
+
+
+        val invokeCode = CodeBlock.builder().apply {
+            add("%M(", listActionMember)
+            add(mapInvokeCode)
+            // if (!targetProperty.def.nullable) {
+                // add("!!")
+            // }
+            add(")")
+            // if (!targetProperty.def.nullable) {
+            //     add(" ?: %M()", ifNullThenMember)
+            // }
+        }.build()
+
+        val targetPropertyRef = targetProperty.propertyRef
+        builder.add(targetPropertyRef)
+        builder.add("·=·")
+        builder.add(invokeCode)
+    }
+
+    companion object {
+        const val KT_COLL_PKG = "kotlin.collections"
+        const val JAVA_UTIL = "java.util"
+
+        val LIST_OF = MemberName("kotlin.collections", "listOf")
+        val SET_OF = MemberName("kotlin.collections", "setOf")
+
+        val MUT_LIST_OF = MemberName("kotlin.collections", "mutableListOf")
+        val MUT_SET_OF = MemberName("kotlin.collections", "mutableSetOf")
+
+        val EMPTY_LIST = MemberName("kotlin.collections", "emptyList")
+        val EMPTY_SET = MemberName("kotlin.collections", "emptySet")
     }
 }

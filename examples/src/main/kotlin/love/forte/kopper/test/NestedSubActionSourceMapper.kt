@@ -20,10 +20,6 @@ import love.forte.kopper.annotation.Mapper
 import love.forte.kopper.annotation.MapperGenTarget
 import love.forte.kopper.annotation.Mapping
 
-/**
- *
- * @author ForteScarlet
- */
 @Mapper(genTarget = MapperGenTarget.CLASS)
 interface NestedSubActionSourceMapper {
     data class Source1(val value: SubSource1)
