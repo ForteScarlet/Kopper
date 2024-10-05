@@ -18,8 +18,8 @@ object P {
     const val GROUP = "love.forte.kopper"
     const val DESCRIPTION = "A KSP data model properties mapper for Kotlin"
     const val HOMEPAGE = "https://github.com/ForteScarlet/Kopper"
-    const val VERSION = "0.0.1"
-    private const val NEXT_VERSION = "0.0.2"
+    const val VERSION = "0.1.0"
+    private const val NEXT_VERSION = "0.1.1"
     const val NEXT_SNAP_VERSION = "$NEXT_VERSION-SNAPSHOT"
 
     const val SCM_CONNECTION = "scm:git:$HOMEPAGE.git"
