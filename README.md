@@ -29,7 +29,7 @@ simple and lightweight.
 - [x] Nested Common Property Mapping
 - [x] Automatic conversion between basic data types (`Int`, `Long`, etc.)
 - [x] eval mapping
-- [x] Non-eval mappings involving iterators and collections (#4)
+- [x] Non-eval mappings involving iterators and collections ([#4](https://github.com/ForteScarlet/Kopper/pull/4))
 
 ## Usage
 
