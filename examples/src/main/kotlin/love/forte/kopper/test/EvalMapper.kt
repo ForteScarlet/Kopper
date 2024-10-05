@@ -21,7 +21,7 @@ import love.forte.kopper.annotation.Mapping
 
 
 @Mapper
-interface EvalTestMapper {
+interface EvalMapper {
     data class Target(var name: String, var size: Long)
     data class Source(val name: String)
 

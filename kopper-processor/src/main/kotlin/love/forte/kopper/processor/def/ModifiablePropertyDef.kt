@@ -16,16 +16,15 @@
 
 package love.forte.kopper.processor.def
 
-import com.google.devtools.ksp.processing.Resolver
-import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSDeclaration
 import com.google.devtools.ksp.symbol.KSNode
+import com.google.devtools.ksp.symbol.KSType
 
 internal sealed interface TargetPropertyDef {
     val isRequired: Boolean
-    val environment: SymbolProcessorEnvironment
-    val resolver: Resolver
+    val kopperContext: KopperContext
     val name: String
+    val type: KSType?
     val declaration: KSDeclaration
     val nullable: Boolean
     val node: KSNode?
@@ -35,13 +34,13 @@ internal sealed interface TargetPropertyDef {
  * 非构造的其他可变参数
  */
 internal data class ModifiablePropertyDef(
-    override val environment: SymbolProcessorEnvironment,
-    override val resolver: Resolver,
+    override val kopperContext: KopperContext,
     // 可以修改的属性，可以在 action target 中获取
     // 必须是属性类型，必须是根属性
 
     override val name: String,
     override val declaration: KSDeclaration,
+    override val type: KSType?,
     override val nullable: Boolean,
     override val node: KSNode?,
 ) : TargetPropertyDef {
@@ -57,9 +56,9 @@ internal data class ModifiablePropertyDef(
  * 构造中所必须地初始化参数，在需要对 target 进行内部初始化时使用。
  */
 internal data class RequiredParameterDef(
-    override val environment: SymbolProcessorEnvironment,
-    override val resolver: Resolver,
+    override val kopperContext: KopperContext,
     override val name: String,
+    override val type: KSType?,
     override val declaration: KSDeclaration,
     override val nullable: Boolean,
     override val node: KSNode?,
@@ -85,10 +84,10 @@ internal fun RequiredParameterDef.asProperty(): ModifiablePropertyDef? {
     }
 
     return ModifiablePropertyDef(
-        environment = environment,
-        resolver = resolver,
+        kopperContext = kopperContext,
         name = name,
         declaration = declaration,
+        type = type,
         nullable = nullable,
         node = node,
     )

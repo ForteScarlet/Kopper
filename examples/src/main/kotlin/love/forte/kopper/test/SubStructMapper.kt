@@ -45,8 +45,9 @@ interface SubStructWithMapMapper {
     data class Source1(val value: SourceSub1, val target: String)
     data class SourceSub1(val age: Int, val name: String)
 
-    data class Target(val value: TargetSub, val target: String)
     data class TargetSub(val number: Long, val name: String)
+
+    data class Target(val value: TargetSub, val target: String)
 
     @Mapping(target = "value")
     fun map(source: Source): Target
@@ -63,13 +64,16 @@ interface SubStructWithMapMapper {
 
 @Mapper
 abstract class NestedWithoutMapMapper {
-    data class Source(val value: SourceSub, val target: String)
     data class SourceSub(val number: Int, val name: String)
+    data class Source(val value: SourceSub, val target: String)
+    data class Source2(val value: SourceSub?, val target: String)
 
-    data class Target(val value: TargetSub, val target: String)
     data class TargetSub(val number: Long, val name: String)
+    data class Target(val value: TargetSub, val target: String)
+    data class Target2(val value: TargetSub?, val target: String)
 
-    abstract fun map(source: Source): Target
-
-    abstract fun Source.map1(): Target
+    abstract fun map1(source: Source): Target
+    abstract fun map2(source: Source2): Target
+    abstract fun map3(source: Source): Target2
+    abstract fun map4(source: Source2): Target2
 }

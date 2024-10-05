@@ -53,8 +53,7 @@ internal class MapperGenerator(
 
 
 internal class MapperActionsGenerator(
-    val environment: SymbolProcessorEnvironment,
-    val resolver: Resolver,
+    val kopperContext: KopperContext,
     val mapperGenerator: MapperGenerator,
 ) {
     private var additionalIndex = 0
@@ -155,7 +154,7 @@ internal class MapperActionsGenerator(
             true
         }
 
-        environment.logger.info(
+        kopperContext.logger.info(
             """
             found action: $foundAction
             from sources: $sources
@@ -168,8 +167,7 @@ internal class MapperActionsGenerator(
         if (foundAction != null) return foundAction
 
         val def = MapperActionDef(
-            environment = environment,
-            resolver = resolver,
+            kopperContext = kopperContext,
             target = target,
             name = name + "_" + (additionalIndex++),
             mappingArgs = mappingArgs,

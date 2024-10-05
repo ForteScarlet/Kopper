@@ -18,6 +18,7 @@ package love.forte.kopper.processor.util
 
 import com.google.devtools.ksp.processing.KSBuiltIns
 import com.google.devtools.ksp.symbol.*
+import com.squareup.kotlinpoet.CodeBlock
 import love.forte.kopper.processor.def.NodeArg
 
 
@@ -111,6 +112,7 @@ internal fun KSDeclaration.isMappableStructType(builtIns: KSBuiltIns): Boolean {
         this == builtIns.charType.declaration -> false
         this == builtIns.booleanType.declaration -> false
         this == builtIns.stringType.declaration -> false
+        this == builtIns.iterableType.declaration -> false
         // is number, for UXxx
         isUByte() || isUShort() || isUInt() || isULong() -> false
         // 更多检测?
@@ -133,9 +135,25 @@ internal fun KSDeclaration.isMappableStructType(builtIns: KSBuiltIns): Boolean {
     }
 }
 
-internal fun KSDeclaration.isDirectMappableType(builtIns: KSBuiltIns): Boolean =
-    !isMappableStructType(builtIns)
-
-
 internal val Nullability.isNullable: Boolean
     get() = this != Nullability.NOT_NULL
+
+
+internal inline fun CodeBlock.Builder.inControlFlow(
+    controlFlow: String,
+    vararg args: Any?,
+    block: CodeBlock.Builder.() -> Unit,
+): CodeBlock.Builder {
+    beginControlFlow(controlFlow = controlFlow, *args)
+    block()
+    return endControlFlow()
+}
+
+internal inline fun CodeBlock.Builder.inStatement(
+    newLine: Boolean = false,
+    block: CodeBlock.Builder.() -> Unit,
+): CodeBlock.Builder {
+    add("«")
+    block()
+    return if (newLine) add("\n»") else add("»")
+}

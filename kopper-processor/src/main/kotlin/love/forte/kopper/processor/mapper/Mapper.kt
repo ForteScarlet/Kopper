@@ -102,8 +102,7 @@ internal class Mapper(
 
     fun generate() {
         val actionGenerator = MapperActionsGenerator(
-            environment = def.environment,
-            resolver = def.resolver,
+            kopperContext = def.kopperContext,
             generator
         )
         // 遍历两遍，先 prepare，再 generate
@@ -113,7 +112,7 @@ internal class Mapper(
         }
 
         for (action in actionGenerator.actions) {
-            def.environment.logger.info("Preparing action statement ${action.def.name}", action.def.node)
+            def.kopperContext.logger.info("Preparing action statement ${action.def.name}", action.def.node)
             action.prepare()
         }
 
@@ -124,7 +123,7 @@ internal class Mapper(
             for (buffer in buffers) {
                 // prepare buffer and add to actions (releases)
                 // prepare may add more buffers.
-                def.environment.logger.info("Preparing action statement ${buffer.def.name}", buffer.def.node)
+                def.kopperContext.logger.info("Preparing action statement ${buffer.def.name}", buffer.def.node)
                 buffer.prepare()
                 actionGenerator.actions.add(buffer)
             }
@@ -132,7 +131,7 @@ internal class Mapper(
         } while (actionGenerator.buffer.isNotEmpty())
 
         for (action in actionGenerator.actions) {
-            def.environment.logger.info("Generating action statement ${action.def.name}", action.def.node)
+            def.kopperContext.logger.info("Generating action statement ${action.def.name}", action.def.node)
             action.generate()
             typeBuilder.addFunction(action.funBuilder.build())
         }

@@ -38,12 +38,6 @@ internal interface MapActionSourceProperty {
     fun propertyAccessor(): CodeBlock
 }
 
-internal interface MapActionSourceTypedProperty : MapActionSourceProperty {
-    val type: KSType
-    // val nullable: Boolean
-    //     get() = type.nullability != Nullability.NOT_NULL
-}
-
 
 internal data class PropertyRead(
     val name: String,

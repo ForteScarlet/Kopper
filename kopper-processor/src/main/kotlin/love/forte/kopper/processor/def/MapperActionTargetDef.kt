@@ -16,8 +16,6 @@
 
 package love.forte.kopper.processor.def
 
-import com.google.devtools.ksp.processing.Resolver
-import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSNode
 import love.forte.kopper.processor.util.isNullable
@@ -29,8 +27,7 @@ import java.util.concurrent.ConcurrentHashMap
  * @author ForteScarlet
  */
 internal data class MapperActionTargetDef(
-    val environment: SymbolProcessorEnvironment,
-    val resolver: Resolver,
+    val kopperContext: KopperContext,
     /**
      * The class declaration of this target.
      * From parameter, receiver or return type.
@@ -74,9 +71,9 @@ internal data class MapperActionTargetDef(
 
             val type = foundProp.type.resolve()
             return ModifiablePropertyDef(
-                environment = environment,
-                resolver = resolver,
+                kopperContext = kopperContext,
                 name = name,
+                type = type,
                 declaration = type.declaration,
                 nullable = type.nullability.isNullable,
                 node = foundProp,
@@ -93,21 +90,21 @@ internal data class MapperActionTargetDef(
      * Null if it has no primary constructor.
      */
     val requires: List<RequiredParameterDef>? by lazy(LazyThreadSafetyMode.PUBLICATION) {
-            val constructor = declaration.primaryConstructor ?: return@lazy null
+        val constructor = declaration.primaryConstructor ?: return@lazy null
 
-            constructor.parameters.map { parameter ->
-                val type = parameter.type.resolve()
-                RequiredParameterDef(
-                    environment = environment,
-                    resolver = resolver,
-                    name = parameter.name!!.asString(),
-                    declaration = type.declaration,
-                    nullable = type.nullability.isNullable,
-                    node = parameter,
-                    isVar = parameter.isVar,
-                    hasDefaultValue = parameter.hasDefault,
-                )
-            }
+        constructor.parameters.map { parameter ->
+            val type = parameter.type.resolve()
+            RequiredParameterDef(
+                kopperContext = kopperContext,
+                name = parameter.name!!.asString(),
+                type = type,
+                declaration = type.declaration,
+                nullable = type.nullability.isNullable,
+                node = parameter,
+                isVar = parameter.isVar,
+                hasDefaultValue = parameter.hasDefault,
+            )
         }
+    }
 }
 

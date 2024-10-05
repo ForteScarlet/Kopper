@@ -16,10 +16,9 @@
 
 package love.forte.kopper.processor.def
 
-import com.google.devtools.ksp.processing.Resolver
-import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSNode
+import com.google.devtools.ksp.symbol.KSType
 import love.forte.kopper.annotation.PropertyType
 import love.forte.kopper.processor.mapper.Path
 import love.forte.kopper.processor.util.asClassDeclaration
@@ -33,8 +32,8 @@ import love.forte.kopper.processor.util.isNullable
  * @author ForteScarlet
  */
 internal data class MapperActionSourceDef(
-    val environment: SymbolProcessorEnvironment,
-    val resolver: Resolver,
+    val kopperContext: KopperContext,
+    val type: KSType?,
     val declaration: KSClassDeclaration,
     /**
      * Incoming parameter or receiver.
@@ -43,8 +42,6 @@ internal data class MapperActionSourceDef(
     val isMain: Boolean,
     val node: KSNode?,
 ) {
-
-
     /**
      * find Single (current root) property
      */
@@ -104,9 +101,9 @@ private fun MapperActionSourceDef.findPropPropertyDirect(
     val type = firstProp.type.resolve()
 
     return ReadablePropertyDef(
-        environment = environment,
-        resolver = resolver,
+        kopperContext = kopperContext,
         name = name,
+        type = type,
         declaration = type.declaration,
         nullable = type.nullability.isNullable,
         propertyType = PropertyType.PROPERTY,
@@ -133,9 +130,9 @@ private fun MapperActionSourceDef.findFunPropertyDirect(
     val type = firstFun.returnType!!.resolve()
 
     return ReadablePropertyDef(
-        environment = environment,
-        resolver = resolver,
+        kopperContext = kopperContext,
         name = name,
+        type = type,
         declaration = type.declaration,
         nullable = type.nullability.isNullable,
         propertyType = PropertyType.FUNCTION,
